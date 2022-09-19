@@ -22,14 +22,14 @@ class RocksDBSingleProblem(Problem):
         x = torch.Tensor(self.knobs.scaler_X.transform(x)).cuda()
         
         outputs = self.model(x)
-        outputs = self.single_score_function(self.knobs.default_trg_em, outputs.cpu().numpy())
+        outputs = self.single_score_function(self.knobs.default_trg_em, outputs.cpu().detach().numpy())
         out["F"] = outputs
         
-    def single_score_function(df, pr):
-        if df.size > 1:
-            df = df.squeeze()
-        score = (df[0] - pr[0]) + (pr[1] - df[1]) + (df[2] - pr[2]) + (df[3] - pr[3])
-        return round(-score, 6)
+    def single_score_function(self, df, pr):
+        df = np.repeat(df, pr.shape[0], axis=0)
+        
+        score = (df[:,0] - pr[:,0]) + (pr[:,1] - df[:,1]) + (df[:,2] - pr[:,2]) + (df[:,3] - pr[:,3])
+        return np.round(-score, 6)
 
 class RocksDBMultiProblem(Problem):
     def __init__(self, knobs, model):
@@ -48,9 +48,9 @@ class RocksDBMultiProblem(Problem):
         x = torch.Tensor(self.knobs.scaler_X.transform(x)).cuda()
         
         outputs = self.model(x)
-        outputs = np.round(self.addb.scaler_y.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
         out["F"] = outputs
-        
+
 def genetic_algorithm(mode, problem, pop_size, eliminate_duplicates=True):
     if mode == 'GA':
         algorithm = GA(pop_size=pop_size, eliminate_duplicates=eliminate_duplicates)
