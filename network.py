@@ -22,15 +22,14 @@ class SingleNet(nn.Module):
         self.input_dim = input_dim # 3327
         self.hidden_dim = hidden_dim # 1024
         self.output_dim = output_dim # 148
-        self.knob_fc = nn.Sequential(nn.Linear(self.input_dim, self.hidden_dim), nn.ReLU())
+        self.hidden = nn.Sequential(nn.Linear(self.input_dim, self.hidden_dim), nn.ReLU())
 #         self.hidden = nn.Sequential(nn.Linear(self.hidden_dim, 64), nn.ReLU())
-        self.im_fc = nn.Sequential(nn.Linear(self.hidden_dim, self.output_dim))
+        self.fc = nn.Sequential(nn.Linear(self.hidden_dim, self.output_dim))
 
-    def forward(self, x, t=None):
-        self.x_kb = self.knob_fc(x)
-#         self.h = self.hidden(self.x_kb)
-        self.x_im = self.im_fc(self.x_kb)
-        return self.x_im, None
+    def forward(self, x):
+        x = self.hidden(x)
+        x = self.fc(self.x_kb)
+        return x
 
 # class EncoderRNN(nn.Module):
 #     def __init__(self, input_dim, hidden_dim, bidirect):
