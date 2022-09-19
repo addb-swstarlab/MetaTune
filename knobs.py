@@ -22,7 +22,8 @@ class Knob:
         # self.knobs_one_hot = self.load_knobsOneHot()
         # self.TABLE_PATH = 'data/lookuptable'
         self.DEFAULT_EM_PATH = 'data/external/default_external.csv'
-        self.default_trg_em = self.get_trg_default()     
+        self.default_trg_em = self.get_trg_default()
+        self.get_range()
         # self.sample_size = sample_size # define sample size, max is 20,000
         # self.reduce_sample_size()
 
@@ -48,18 +49,18 @@ class Knob:
     #     self.X_te = torch.Tensor(self.X_te).cuda()
 
     def split_data(self): # s_wk is similar workload with target workload
+        self.s_internal_metrics = self.internal_metrics[self.target_wk]
+        self.s_external_metrics = self.external_metrics[self.target_wk]
         self.X_tr, self.X_te, self.im_tr, self.im_te, self.em_tr, self.em_te = \
-            train_test_split(self.knobs, self.internal_metrics, self.external_metrics, test_size=0.2, random_state=22)
-        self.X_tr = torch.Tensor(self.X_tr).cuda()
-        self.X_te = torch.Tensor(self.X_te).cuda()
+            train_test_split(self.knobs, self.s_internal_metrics, self.s_external_metrics, test_size=0.2, random_state=22)
 
     def scale_data(self):
         self.scaler_X = MinMaxScaler().fit(self.X_tr)
         self.scaler_im = MinMaxScaler().fit(self.im_tr) # [0, 1]
         self.scaler_em = MinMaxScaler().fit(self.em_tr)
         
-        self.norm_k_tr = torch.Tensor(self.scaler_X.transform(self.X_tr)).cuda()
-        self.norm_k_te = torch.Tensor(self.scaler_X.transform(self.X_te)).cuda()
+        self.norm_X_tr = torch.Tensor(self.scaler_X.transform(self.X_tr)).cuda()
+        self.norm_X_te = torch.Tensor(self.scaler_X.transform(self.X_te)).cuda()
         self.norm_im_tr = torch.Tensor(self.scaler_im.transform(self.im_tr)).cuda()
         self.norm_im_te = torch.Tensor(self.scaler_im.transform(self.im_te)).cuda()
         self.norm_em_tr = torch.Tensor(self.scaler_em.transform(self.em_tr)).cuda()
