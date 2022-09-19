@@ -17,7 +17,7 @@ def train(model, train_loader, lr):
         ## initilize gradient
         optimizer.zero_grad()
         ## predict
-        output, _ = model(data) # output.shape = (batch_size, 1)
+        output = model(data) # output.shape = (batch_size, 1)
         ## loss
         loss = F.mse_loss(output, target)
         ## backpropagation
@@ -37,7 +37,7 @@ def valid(model, valid_loader):
     outputs = torch.Tensor().cuda()
     with torch.no_grad():
         for data, target in valid_loader:
-            output, _ = model(data)
+            output = model(data)
             loss = F.mse_loss(output, target) # mean squared error
             total_loss += loss.item()
             outputs = torch.cat((outputs, output))
