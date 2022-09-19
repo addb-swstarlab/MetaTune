@@ -28,7 +28,7 @@ class SingleNet(nn.Module):
 
     def forward(self, x):
         x = self.hidden(x)
-        x = self.fc(self.x_kb)
+        x = self.fc(x)
         return x
 
 # class EncoderRNN(nn.Module):
