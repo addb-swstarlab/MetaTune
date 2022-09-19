@@ -2,13 +2,13 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from sklearn.preprocessing import MinMaxScaler
+# from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import DataLoader
-from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, DecoderRNN, Attention, AttnDecoderRNN
-from models.train import train, valid
-from models.utils import get_filename
-import models.rocksdb_option as option
+from network import RocksDBDataset, SingleNet
+from train import train, valid
+from utils import get_filename
+import rocksdb_option as option
 from scipy.stats import gmean
 from sklearn.ensemble import RandomForestRegressor
 
@@ -61,60 +61,59 @@ def train_fitness_function(knobs, logger, opt):
 
     model = SingleNet(input_dim=knobs.norm_X_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
 
-    if opt.train:       
-        logger.info(f"[Train MODE] Training Model") 
-        best_loss = 100
-        name = get_filename('model_save', 'model', '.pt')
-        for epoch in range(opt.epochs):
-            loss_tr = train(model, loader_tr, opt.lr)
-            loss_te, outputs = valid(model, loader_te)
-        
-            logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
+    # if opt.train:       
+    logger.info(f"[Train MODE] Training Model") 
+    best_loss = 100
+    name = get_filename('model_save', 'model', '.pt')
+    for epoch in range(opt.epochs):
+        loss_tr = train(model, loader_tr, opt.lr)
+        loss_te, outputs = valid(model, loader_te)
+    
+        logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
 
-            if best_loss > loss_te and epoch>15:
-                best_loss = loss_te
-                best_model = model
-                best_outputs = outputs
-                torch.save(best_model, os.path.join('model_save', name))
-        logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
-        
+        if best_loss > loss_te and epoch>15:
+            best_loss = loss_te
+            best_model = model
+            best_outputs = outputs
+            torch.save(best_model, os.path.join('model_save', name))
+    logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
+    
+    return best_model, best_outputs
+    # elif opt.eval:
+    #     logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
+    #     model = torch.load(os.path.join('model_save',opt.model_path))
+    #     _, outputs = valid(model, loader_te)
+    #     return model, outputs
 
-        return best_model, best_outputs
-    elif opt.eval:
-        logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
-        model = torch.load(os.path.join('model_save',opt.model_path))
-        _, outputs = valid(model, loader_K2vec_te)
-        return model, outputs
-
-def score_function(df, pr, ex_w):
+def score_function(df, pr):
     if df.size > 1:
         df = df.squeeze()
-    score = (df[0] - pr[0]) * ex_w[0] + (pr[1] - df[1]) * ex_w[1] + (df[2] - pr[2]) * ex_w[2] + (df[3] - pr[3]) * ex_w[3]
+    score = (df[0] - pr[0]) + (pr[1] - df[1]) + (df[2] - pr[2]) + (df[3] - pr[3])
     return round(score, 6)
 
-def set_fitness_function(solution, model, knobs, opt):
-    Dataset_sol = RocksDBDataset(solution, np.zeros((len(solution), 1)))
-    loader_sol = DataLoader(Dataset_sol, shuffle=False, batch_size=opt.GA_batch_size)
+# def set_fitness_function(solution, model, knobs, opt):
+#     Dataset_sol = RocksDBDataset(solution, np.zeros((len(solution), 1)))
+#     loader_sol = DataLoader(Dataset_sol, shuffle=False, batch_size=opt.GA_batch_size)
 
     
-    ## Set phase
-    model.eval()
-    model.batch_size = opt.GA_batch_size
-    model.tf = False # Teacher Forcing Off
+#     ## Set phase
+#     model.eval()
+#     model.batch_size = opt.GA_batch_size
+#     model.tf = False # Teacher Forcing Off
     
-    ## Predict
-    fitness_f = []
-    with torch.no_grad():
-        for data, _ in loader_sol:
-            if opt.mode == 'dnn':
-                data = torch.reshape(data, (data.shape[0], -1))
-            fitness_batch, _ = model(data)
-            # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy()) # if fitness_batch's type is torch.Tensor()
-            fitness_batch = fitness_batch.cpu().numpy()
-            fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
-            fitness_f += fitness_batch # [1,2] += [3,4,5] --> [1,2,3,4,5]
+#     ## Predict
+#     fitness_f = []
+#     with torch.no_grad():
+#         for data, _ in loader_sol:
+#             if opt.mode == 'dnn':
+#                 data = torch.reshape(data, (data.shape[0], -1))
+#             fitness_batch, _ = model(data)
+#             # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy()) # if fitness_batch's type is torch.Tensor()
+#             fitness_batch = fitness_batch.cpu().numpy()
+#             fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
+#             fitness_f += fitness_batch # [1,2] += [3,4,5] --> [1,2,3,4,5]
     
-    return fitness_f
+#     return fitness_f
 
 def GA_optimization(knobs, fitness_function, logger, opt):    
     configs = knobs.knobs#.to_numpy()
