@@ -131,15 +131,15 @@ def main():
         
 
     
-    file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_prediction_score.csv"
-    if os.path.isfile(file_name) is False:
-        pd.DataFrame(data=['r2', 'pcc', 'ci'], columns=['score']).to_csv(file_name, index=False)
-    pred_score = pd.read_csv(file_name, index_col=0)
-    if opt.bidirect:
-        pred_score[f'{opt.target}_bi{opt.mode}'] = [r2_res, pcc_res, ci_res]
-    else:
-        pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
-    pred_score.to_csv(file_name)
+    # file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_prediction_score.csv"
+    # if os.path.isfile(file_name) is False:
+    #     pd.DataFrame(data=['r2', 'pcc', 'ci'], columns=['score']).to_csv(file_name, index=False)
+    # pred_score = pd.read_csv(file_name, index_col=0)
+    # if opt.bidirect:
+    #     pred_score[f'{opt.target}_bi{opt.mode}'] = [r2_res, pcc_res, ci_res]
+    # else:
+    #     pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
+    # pred_score.to_csv(file_name)
     
     recommend_command, step_recommend_command, step_best_fitness = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
