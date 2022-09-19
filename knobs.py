@@ -76,6 +76,10 @@ class Knob:
         # default_em = default_em.to_numpy()
         return default_em.iloc[self.target_wk:self.target_wk+1, :] # [time, rate, waf, sa]
 
+    def get_range(self):
+        self.lower_boundary = np.array(self.knobs.astype(float).min())
+        self.upper_boundary = np.array(self.knobs.astype(float).max())
+    
     # def get_index_value(self):
     #     '''
     #         To get index value from each knob data
