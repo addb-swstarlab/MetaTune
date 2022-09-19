@@ -4,31 +4,31 @@ import pandas as pd
 import numpy as np
 from utils import get_logger, rocksdb_knobs_make_dict
 from knobs import Knob
-from steps import get_euclidean_distance, train_knob2vec, train_fitness_function, GA_optimization
+from steps import train_fitness_function, GA_optimization
 from sklearn.metrics import r2_score
 from scipy.stats import pearsonr
 from lifelines.utils import concordance_index
-from benchmark import exec_benchmark
-from datetime import datetime
+# from benchmark import exec_benchmark
+# from datetime import datetime
 
 os.system('clear')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--target', type=int, default=1, help='Choose target workload')
-parser.add_argument('--target_size', type=int, default=10, help='Define target workload size')
+parser.add_argument('--target', type=int, default=0, help='Choose target workload')
+# parser.add_argument('--target_size', type=int, default=10, help='Define target workload size')
 parser.add_argument('--lr', type=float, default=0.001, help='Define learning rate')
 parser.add_argument('--epochs', type=int, default=30, help='Define train epochs')
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
 parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
+parser.add_argument('--ga', type=str, default='GA', choices=['GA', 'NSGA2'], help='choose genetic algorithm')
 parser.add_argument('--mode', type=str, default='dnn', help='choose which model be used on fitness function')
 # parser.add_argument('--eval', action='store_true', help='if trigger, model goes eval mode')
 # parser.add_argument('--train', action='store_true', help='if trigger, model goes triain mode')
 # parser.add_argument('--model_path', type=str, help='Define which .pt will be loaded on model')
-parser.add_argument('--pool', type=int, default=128, help='Define the number of pool to GA algorithm')
-parser.add_argument('--generation', type=int, default=1000, help='Define the number of generation to GA algorithm')
+parser.add_argument('--population', type=int, default=100, help='Define the number of generation to GA algorithm')
 parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
 # parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
-parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
+# parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 # parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
 
 
@@ -89,6 +89,7 @@ def main():
     logger.info("## Train Fitness Function ##")
     fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
 
+    
     # if outputs' type are torch.tensor
     pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
     # if outputs' type are numpy array
@@ -141,7 +142,7 @@ def main():
     #     pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
     # pred_score.to_csv(file_name)
     
-    recommend_command, step_recommend_command, step_best_fitness = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
