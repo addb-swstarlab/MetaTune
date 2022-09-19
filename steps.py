@@ -11,6 +11,7 @@ from utils import get_filename
 import rocksdb_option as option
 from scipy.stats import gmean
 from sklearn.ensemble import RandomForestRegressor
+from ga import RocksDBSingleProblem, RocksDBMultiProblem, genetic_algorithm
 
 # def euclidean_distance(a, b):
 #     res = a - b
@@ -85,132 +86,22 @@ def train_fitness_function(knobs, logger, opt):
     #     _, outputs = valid(model, loader_te)
     #     return model, outputs
 
-def score_function(df, pr):
-    if df.size > 1:
-        df = df.squeeze()
-    score = (df[0] - pr[0]) + (pr[1] - df[1]) + (df[2] - pr[2]) + (df[3] - pr[3])
-    return round(score, 6)
+def GA_optimization(knobs, fitness_function, logger, opt):
+    if opt.ga == 'GA':
+        problem = RocksDBSingleProblem(knobs=knobs, model=fitness_function)
+    elif opt.ga == 'NSGA2':
+        problem = RocksDBMultiProblem(knobs=knobs, model=fitness_function)
 
-# def set_fitness_function(solution, model, knobs, opt):
-#     Dataset_sol = RocksDBDataset(solution, np.zeros((len(solution), 1)))
-#     loader_sol = DataLoader(Dataset_sol, shuffle=False, batch_size=opt.GA_batch_size)
-
+    res = genetic_algorithm(mode=opt.ga, problem=problem, pop_size=opt.population)
     
-#     ## Set phase
-#     model.eval()
-#     model.batch_size = opt.GA_batch_size
-#     model.tf = False # Teacher Forcing Off
-    
-#     ## Predict
-#     fitness_f = []
-#     with torch.no_grad():
-#         for data, _ in loader_sol:
-#             if opt.mode == 'dnn':
-#                 data = torch.reshape(data, (data.shape[0], -1))
-#             fitness_batch, _ = model(data)
-#             # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy()) # if fitness_batch's type is torch.Tensor()
-#             fitness_batch = fitness_batch.cpu().numpy()
-#             fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
-#             fitness_f += fitness_batch # [1,2] += [3,4,5] --> [1,2,3,4,5]
-    
-#     return fitness_f
-
-def GA_optimization(knobs, fitness_function, logger, opt):    
-    configs = knobs.knobs#.to_numpy()
-    n_configs = configs.shape[1]
-    n_pool_half = int(opt.pool/2)
-    mutation = int(n_configs * 0.4)
-
-    ## use pool nums of top to initialize current_solution_pool
-    scaled_em = knobs.scaler_em.transform(knobs.s_external_metrics)
-    em_score = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in scaled_em]
-    em_score = [_*-1 for _ in em_score]
-    idx_em = np.argsort(em_score)[:opt.pool]
-    
-    current_solution_pool = pd.DataFrame(configs.to_numpy()[idx_em, :], columns=knobs.columns)
-    # current_solution_pool = configs[:opt.pool] # dataframe
-    # current_solution_pool = torch.Tensor(current_solution_pool.to_numpy()).cuda() # if current_solution_pool's type is dataframe
-    step_best_solution = []
-    step_best_fitness = []
-    
-    for i in range(opt.generation):
-        if opt.mode == 'raw':
-            scaled_pool = torch.Tensor(knobs.scaler_k.transform(current_solution_pool)).cuda()
-            fitness = set_fitness_function(scaled_pool, fitness_function, knobs, opt)
-        elif opt.mode == 'RF':
-            scaled_pool = knobs.scaler_k.transform(current_solution_pool)
-            fitness = fitness_function.predict(scaled_pool)
-            fitness = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness]
-        else:
-            onehot_pool = knobs.load_knobsOneHot(k=current_solution_pool, save=False)
-            onehot_pool = torch.Tensor(onehot_pool).cuda()
-            k2v_pool = knobs.get_knob2vec(onehot_pool, knobs.lookuptable)
-            k2v_pool = torch.Tensor(k2v_pool).cuda()
-            fitness = set_fitness_function(k2v_pool, fitness_function, knobs, opt)
-
-        fitness = [_*-1 for _ in fitness] # bigger is good
-
-        ## best parents selection
-        idx_fitness = np.argsort(fitness)[:n_pool_half]
-        best_solution_pool = current_solution_pool.to_numpy()[idx_fitness, :] # dataframe -> numpy
-        if i % 10 == 9:
-            logger.info(f"[{i+1:3d}/{opt.generation:3d}] best fitness: {fitness[idx_fitness[0]]:.5f}")
-        
-        ## cross-over and mutation
-        new_solution_pool = np.zeros_like(best_solution_pool) # new_solution_pool.shape = (n_pool_half,22)
-        for j in range(n_pool_half):
-            pivot = np.random.choice(np.arange(1,n_configs))
-            # pivot = np.random.choice(np.arange(1,n_configs-1))
-            new_solution_pool[j][:pivot] = best_solution_pool[j][:pivot]
-            new_solution_pool[j][pivot:] = best_solution_pool[n_pool_half-1-j][pivot:]
-            
-            _, random_knobs = option.make_random_option()
-
-            random_knobs = {_:random_knobs[_] for _ in knobs.columns}
-            random_list_knobs = list(random_knobs.values())
-            random_knob_index = np.arange(n_configs)
-            np.random.shuffle(random_knob_index)
-            random_knob_index = random_knob_index[:mutation]
-            # random_knob_index = [random.randint(0,21) for r in range(mutation)]
-            for k in range(len(random_knob_index)):
-                new_solution_pool[j][random_knob_index[k]] = random_list_knobs[random_knob_index[k]]
-        
-        ## stack
-        current_solution_pool = np.vstack([best_solution_pool, new_solution_pool]) # current_solution_pool.shape = (n_pool,22)
-        current_solution_pool = pd.DataFrame(current_solution_pool, columns=knobs.columns)
-        
-        if (i+1)%25==0:
-            SOLUTION_PATH = '/home/jieun/Knob2Vec/save_solution'
-            if not os.path.isdir(SOLUTION_PATH):
-                os.makedirs(SOLUTION_PATH)
-            if not os.path.isdir(os.path.join(SOLUTION_PATH, datetime.today().strftime("%Y%m%d"))):
-                os.makedirs(os.path.join(SOLUTION_PATH, datetime.today().strftime("%Y%m%d")))
-            current_solution_pool.to_csv(os.path.join(SOLUTION_PATH, datetime.today().strftime("%Y%m%d"), f'gen{i+1}_{opt.target}_{opt.mode}_{opt.bidirect}.csv'))
-        
-        ## save best solution at each step
-        step_best_solution.append(best_solution_pool[0])
-        step_best_fitness.append(-np.min(fitness))
-        
-    final_solution = best_solution_pool[0]
     recommend_command = ''
-    step_recommend_command = []
-    
     for idx, col in enumerate(knobs.columns):                 
-        recommend_command = convert_int_to_category(col, recommend_command, final_solution[idx])
-        
-    recommend_command = make_dbbench_command(opt.target, recommend_command)
+        recommend_command = convert_int_to_category(col, recommend_command, res.X)
 
+    recommend_command = make_dbbench_command(opt.target, recommend_command)
     logger.info(f"db_bench command is  {recommend_command}")
     
-    for step in range(len(step_best_solution)):
-        cmd = ''
-        step_solution = step_best_solution[step]
-        for idx, col in enumerate(knobs.columns):
-            cmd = convert_int_to_category(col, cmd, step_solution[idx])
-        cmd = make_dbbench_command(opt.target, cmd)
-        step_recommend_command.append(cmd)
-    
-    return recommend_command, step_recommend_command, step_best_fitness
+    return res, recommend_command
 
 def convert_int_to_category(col, cmd, s):
     if col=='compression_type':
