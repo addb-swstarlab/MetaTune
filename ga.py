@@ -1,6 +1,8 @@
 from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.ga import GA
 from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.algorithms.moo.nsga3 import NSGA3
+from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.core.problem import Problem
 import torch
 import pandas as pd
@@ -36,16 +38,16 @@ class RocksDBMultiProblem(Problem):
         self.knobs = knobs
         self.model = model
         self.model.eval()
-        n_var = len(self.knobs.columns)
+        self.n_var = len(self.knobs.columns)
         n_obj = self.knobs.default_trg_em.shape[-1] # # of external metrics
         xl = self.knobs.lower_boundary
         xu = self.knobs.upper_boundary
         
         
-        super().__init__(n_var=n_var, n_obj=n_obj, xl=xl, xu=xu)
+        super().__init__(n_var=self.n_var, n_obj=n_obj, xl=xl, xu=xu)
         
     def _evaluate(self, x, out, *args, **kwargs):
-        x = torch.Tensor(self.knobs.scaler_X.transform(x)).cuda()
+        x = torch.Tensor(self.knobs.scaler_X.transform(pd.DataFrame(data=x, columns=self.knobs.columns))).cuda()
         
         outputs = self.model(x)
         outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
@@ -56,5 +58,8 @@ def genetic_algorithm(mode, problem, pop_size, eliminate_duplicates=True):
         algorithm = GA(pop_size=pop_size, eliminate_duplicates=eliminate_duplicates)
     elif mode == 'NSGA2':
         algorithm = NSGA2(pop_size=pop_size, eliminate_duplicates=eliminate_duplicates)
+    elif mode == 'NSGA3':
+        ref_dirs = get_reference_directions('das-dennis', problem.n_var, n_partitions=problem.n_var*4)
+        algorithm = NSGA3(pop_size=pop_size, eliminate_duplicates=eliminate_duplicates, ref_dirs=ref_dirs)
     res = minimize(problem, algorithm, verbose=False)
     return res
