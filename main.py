@@ -2,6 +2,7 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
+from benchmark import exec_benchmark
 from utils import get_logger, rocksdb_knobs_make_dict
 from knobs import Knob
 from steps import train_fitness_function, GA_optimization
@@ -20,7 +21,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='Define learning rat
 parser.add_argument('--epochs', type=int, default=30, help='Define train epochs')
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
 parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
-parser.add_argument('--ga', type=str, default='GA', choices=['GA', 'NSGA2'], help='choose genetic algorithm')
+parser.add_argument('--ga', type=str, default='GA', choices=['GA', 'NSGA2', 'NSGA3'], help='choose genetic algorithm')
 parser.add_argument('--mode', type=str, default='dnn', help='choose which model be used on fitness function')
 # parser.add_argument('--eval', action='store_true', help='if trigger, model goes eval mode')
 # parser.add_argument('--train', action='store_true', help='if trigger, model goes triain mode')
@@ -147,6 +148,14 @@ def main():
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
     
+    exec_benchmark(recommend_command, opt)
+    
+    if os.path.exists('res.txt'):
+        logger.info('## Results of External Metrics ##')
+        f = open('res.txt')
+        bench_res = f.readlines()
+        for _ in bench_res:
+            logger.info(f'{_[:-1]}')
     # if opt.step:
     #     for s_cmd in step_recommend_command:
     #         exec_benchmark(s_cmd, opt)
