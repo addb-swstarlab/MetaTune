@@ -89,14 +89,20 @@ def train_fitness_function(knobs, logger, opt):
 def GA_optimization(knobs, fitness_function, logger, opt):
     if opt.ga == 'GA':
         problem = RocksDBSingleProblem(knobs=knobs, model=fitness_function)
-    elif opt.ga == 'NSGA2':
+    elif opt.ga == 'NSGA2' or opt.ga == 'NSGA3':
         problem = RocksDBMultiProblem(knobs=knobs, model=fitness_function)
 
     res = genetic_algorithm(mode=opt.ga, problem=problem, pop_size=opt.population)
     
+    if len(res.X.shape) == 2:
+        results = res.X[0] # NSGA2, MOO
+    else:
+        results = res.X # GA, SOO
+    
     recommend_command = ''
+    
     for idx, col in enumerate(knobs.columns):                 
-        recommend_command = convert_int_to_category(col, recommend_command, res.X[idx])
+        recommend_command = convert_int_to_category(col, recommend_command, results[idx])
 
     recommend_command = make_dbbench_command(opt.target, recommend_command)
     logger.info(f"db_bench command is  {recommend_command}")
