@@ -88,9 +88,9 @@ def train_fitness_function(knobs, logger, opt):
 
 def GA_optimization(knobs, fitness_function, logger, opt):
     if opt.ga == 'GA':
-        problem = RocksDBSingleProblem(knobs=knobs, model=fitness_function)
+        problem = RocksDBSingleProblem(knobs=knobs, model=fitness_function, model_mode=opt.mode)
     elif opt.ga == 'NSGA2' or opt.ga == 'NSGA3':
-        problem = RocksDBMultiProblem(knobs=knobs, model=fitness_function)
+        problem = RocksDBMultiProblem(knobs=knobs, model=fitness_function, model_mode=opt.mode)
 
     res = genetic_algorithm(mode=opt.ga, problem=problem, pop_size=opt.population)
     
