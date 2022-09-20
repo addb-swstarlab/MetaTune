@@ -9,10 +9,11 @@ import pandas as pd
 import numpy as np
 
 class RocksDBSingleProblem(Problem):
-    def __init__(self, knobs, model):
+    def __init__(self, knobs, model, model_mode):
         self.knobs = knobs
         self.model = model
-        self.model.eval()
+        self.model_mode = model_mode
+        # self.model.eval()
         n_var = len(self.knobs.columns)
         n_obj = 1
         xl = self.knobs.lower_boundary
@@ -23,8 +24,12 @@ class RocksDBSingleProblem(Problem):
     def _evaluate(self, x, out, *args, **kwargs):
         x = torch.Tensor(self.knobs.scaler_X.transform(x)).cuda()
         
-        outputs = self.model(x)
-        outputs = self.single_score_function(self.knobs.default_trg_em, outputs.cpu().detach().numpy())
+        if self.model_mode == "RF":
+            outputs = self.model.predict(x.cpu().detach().numpy())
+            outputs = self.single_score_function(self.knobs.default_trg_em, outputs)
+        else:
+            outputs = self.model(x)
+            outputs = self.single_score_function(self.knobs.default_trg_em, outputs.cpu().detach().numpy())
         out["F"] = outputs
         
     def single_score_function(self, df, pr):
@@ -34,10 +39,11 @@ class RocksDBSingleProblem(Problem):
         return np.round(-score, 6)
 
 class RocksDBMultiProblem(Problem):
-    def __init__(self, knobs, model):
+    def __init__(self, knobs, model, model_mode):
         self.knobs = knobs
         self.model = model
-        self.model.eval()
+        self.model_mode = model_mode
+        # self.model.eval()
         self.n_var = len(self.knobs.columns)
         n_obj = self.knobs.default_trg_em.shape[-1] # # of external metrics
         xl = self.knobs.lower_boundary
@@ -49,8 +55,13 @@ class RocksDBMultiProblem(Problem):
     def _evaluate(self, x, out, *args, **kwargs):
         x = torch.Tensor(self.knobs.scaler_X.transform(pd.DataFrame(data=x, columns=self.knobs.columns))).cuda()
         
-        outputs = self.model(x)
-        outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        if self.model_mode == "RF":
+            outputs = self.model.predict(x.cpu().detach().numpy())
+            outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs), 2)
+        else:
+            outputs = self.model(x)
+            outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        outputs[:,1] = -outputs[:,1]
         out["F"] = outputs
 
 def genetic_algorithm(mode, problem, pop_size, eliminate_duplicates=True):
@@ -59,6 +70,7 @@ def genetic_algorithm(mode, problem, pop_size, eliminate_duplicates=True):
     elif mode == 'NSGA2':
         algorithm = NSGA2(pop_size=pop_size, eliminate_duplicates=eliminate_duplicates)
     elif mode == 'NSGA3':
+        assert False, "Too much memory required"
         ref_dirs = get_reference_directions('das-dennis', problem.n_var, n_partitions=problem.n_var*4)
         algorithm = NSGA3(pop_size=pop_size, eliminate_duplicates=eliminate_duplicates, ref_dirs=ref_dirs)
     res = minimize(problem, algorithm, verbose=False)
