@@ -88,13 +88,15 @@ def main():
   
     # if opt.train:
     logger.info("## Train Fitness Function ##")
-    fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
-
+    fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)   
     
-    # if outputs' type are torch.tensor
-    pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
-    # if outputs' type are numpy array
-    # pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
+    if opt.mode == "RF":
+        # if outputs' type are numpy array
+        pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
+    else:
+        # if outputs' type are torch.tensor
+        pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)    
+        
     true = knobs.em_te.to_numpy()
 
     for i in range(10):
@@ -145,6 +147,11 @@ def main():
     
     res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
+    logger.info(f'## Predicted External metrics from genetic algorithm ##')
+    logger.info(f'TIME: {res.F[0][0]}')
+    logger.info(f'RATE: {res.F[0][1]}')
+    logger.info(f'WAF: {res.F[0][2]}')
+    logger.info(f'SA: {res.F[0][3]}')
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
     
