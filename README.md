@@ -2,3 +2,9 @@
 - GA
 - NSGA2
 - to be updated
+
+#### Branch
+- merged_ga
+  - mysql and rocksdb
+- rocksdb_ga
+  - rocksdb
