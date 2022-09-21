@@ -8,3 +8,4 @@
   - mysql and rocksdb
 - rocksdb_ga
   - rocksdb
+- wmaml_tabnet
