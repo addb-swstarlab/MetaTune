@@ -117,21 +117,34 @@ def main():
     logger.info(f'TIME:{r2_res[0]:.4f}, RATE:{r2_res[1]:.4f}, WAF:{r2_res[2]:.4f}, SA:{r2_res[3]:.4f}')
     r2_res = np.average(r2_res)
     logger.info(f'average r2 score = {r2_res:.4f}')
-    pcc_res = np.zeros(4)
-    ci_res = np.zeros(4)
-    for idx in range(4):
-        res, _ = pearsonr(true[:,idx], pred[:,idx])  
-        pcc_res[idx] = res
-        res = concordance_index(true[:,idx], pred[:,idx])
-        ci_res[idx] = res
-    pcc_res = pcc_res/len(true)
-    ci_res = ci_res/len(true)
+    
+    pcc_res = 0
+    ci_res = 0
+    for idx in range(knobs.external_metrics_size):
+        res_, _ =  pearsonr(true[:,idx], pred[:,idx])
+        pcc_res += res_
+        res_ = concordance_index(true[:,idx], pred[:,idx])
+        ci_res += res_
+    pcc_res = pcc_res/knobs.external_metrics_size
+    ci_res = ci_res/knobs.external_metrics_size
+    
+    # pcc_res = np.zeros(4)
+    # ci_res = np.zeros(4)
+    # for idx in range(4):
+    #     res, _ = pearsonr(true[:,idx], pred[:,idx])  
+    #     pcc_res[idx] = res
+    #     res = concordance_index(true[:,idx], pred[:,idx])
+    #     ci_res[idx] = res
+    # pcc_res = pcc_res/len(true)
+    # ci_res = ci_res/len(true)
     logger.info('[PCC SCORE]')
     # logger.info(f'TIME:{pcc_res[0]:.4f}, RATE:{pcc_res[1]:.4f}, WAF:{pcc_res[2]:.4f}, SA:{pcc_res[3]:.4f}')
-    logger.info(f'average pcc score = {np.average(pcc_res):.4f}')
+    # logger.info(f'average pcc score = {np.average(pcc_res):.4f}')
+    logger.info(f'average pcc score = {pcc_res:.4f}')
     logger.info('[CI SCORE]')
     # logger.info(f'TIME:{ci_res[0]:.4f}, RATE:{ci_res[1]:.4f}, WAF:{ci_res[2]:.4f}, SA:{ci_res[3]:.4f}')
-    logger.info(f'average ci score = {np.average(ci_res):.4f}')
+    # logger.info(f'average ci score = {np.average(ci_res):.4f}')
+    logger.info(f'average ci score = {ci_res:.4f}')
         
 
     
@@ -145,13 +158,13 @@ def main():
     #     pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
     # pred_score.to_csv(file_name)
     
-    res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
     logger.info(f'## Predicted External metrics from genetic algorithm ##')
-    logger.info(f'TIME: {res.F[0][0]}')
-    logger.info(f'RATE: {res.F[0][1]}')
-    logger.info(f'WAF: {res.F[0][2]}')
-    logger.info(f'SA: {res.F[0][3]}')
+    logger.info(f'TIME: {res_F[0]}')
+    logger.info(f'RATE: {res_F[1]}')
+    logger.info(f'WAF: {res_F[2]}')
+    logger.info(f'SA: {res_F[3]}')
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
     
