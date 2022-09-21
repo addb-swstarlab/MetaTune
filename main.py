@@ -15,6 +15,7 @@ from lifelines.utils import concordance_index
 os.system('clear')
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--dbms', type=str, choices=['rocksdb', 'mysql'], help='choose dbms, rocksdb or mysql')
 parser.add_argument('--target', type=int, default=0, help='Choose target workload')
 # parser.add_argument('--target_size', type=int, default=10, help='Define target workload size')
 parser.add_argument('--lr', type=float, default=0.001, help='Define learning rate')
@@ -49,9 +50,10 @@ logger.info("## model hyperparameter information ##")
 for i in vars(opt):
     logger.info(f'{i}: {vars(opt)[i]}')
 
-KNOB_PATH = 'data/rocksdb_conf'
-EXTERNAL_PATH = 'data/external'
-INTERNAL_PATH = 'data/internal'
+DBMS_PATH = f'{opt.dbms}'
+KNOB_PATH = os.path.join(DBMS_PATH, 'data/configs')
+EXTERNAL_PATH = os.path.join(DBMS_PATH, 'data/external')
+INTERNAL_PATH = os.path.join(DBMS_PATH, 'data/internal')
 WK_NUM = 1
 # WK_NUM = 16
 
@@ -160,13 +162,14 @@ def main():
     
     res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
-    logger.info(f'## Predicted External metrics from genetic algorithm ##')
-    logger.info(f'TIME: {res_F[0]}')
-    logger.info(f'RATE: {res_F[1]}')
-    logger.info(f'WAF: {res_F[2]}')
-    logger.info(f'SA: {res_F[3]}')
-    logger.info("## Train/Load Fitness Function DONE ##")
-    logger.info("## Configuration Recommendation DONE ##")
+    if opt.ga == "NSGA2":
+        logger.info(f'## Predicted External metrics from genetic algorithm ##')
+        logger.info(f'TIME: {res_F[0]}')
+        logger.info(f'RATE: {res_F[1]}')
+        logger.info(f'WAF: {res_F[2]}')
+        logger.info(f'SA: {res_F[3]}')
+        logger.info("## Train/Load Fitness Function DONE ##")
+        logger.info("## Configuration Recommendation DONE ##")
     
     exec_benchmark(recommend_command, opt)
     
