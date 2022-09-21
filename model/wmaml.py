@@ -131,11 +131,34 @@ class MAML_one_batch():
         # self.best_loss = 
 
     
-    def inner_loop(self, iter):     # i: task , iteration : iteration
-        # reset inner model to current maml weights
-        temp_weights = [w.clone() for w in self.weights]         
-        # perform training on data sampled from task
+    # def inner_loop(self, iter):     # i: task , iteration : iteration
+    #     # reset inner model to current maml weights
+    #     temp_weights = [w.clone() for w in self.weights]         
+    #     # perform training on data sampled from task
 
+    #     X, y = self.sample_tr[0], self.sample_tr[1]
+    #     inner_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
+    #     grad = torch.autograd.grad(inner_loss, temp_weights)
+    #     temp_weights = [w - self.inner_lr * g for w, g in zip(temp_weights, grad)]
+
+    #     temp_pred = self.model.parameterised(X, temp_weights)
+    #     # calculate loss for update maml weight (with update inner loop weight)
+    #     if self.dot:
+    #         d = torch.bmm(self.model.p_res_x, self.model.p_res_x.transpose(1, 2))
+    #         dot_loss = F.mse_loss(d, torch.eye(d.size(1)).repeat(X.shape[0], 1, 1).cuda())
+    #         meta_loss = (1-self.lamb)*self.criterion(temp_pred, y) + self.lamb*dot_loss
+    #         # meta_loss = (1-self.lamb)*F.mse_loss(self.model.parameterised(X, temp_weights), y) + self.lamb*dot_loss
+    #     else:
+    #         meta_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
+        
+    #     return inner_loss, meta_loss
+
+    def inner_loop(self, model, iter):     # i: task , iteration : iteration
+        # reset inner model to current maml weights
+        tmp_model = TabNetRegressor()
+        tmp_model.load_state_dict(model.state_dict())
+        # perform training on data sampled from task
+        
         X, y = self.sample_tr[0], self.sample_tr[1]
         inner_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
         grad = torch.autograd.grad(inner_loss, temp_weights)
@@ -152,6 +175,7 @@ class MAML_one_batch():
             meta_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
         
         return inner_loss, meta_loss
+    
 
     def main_loop(self):
         # epoch_loss = 0 ####
