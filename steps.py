@@ -96,8 +96,10 @@ def GA_optimization(knobs, fitness_function, logger, opt):
     
     if len(res.X.shape) == 2:
         results = res.X[0] # NSGA2, MOO
+        res_F = res.F[0]
     else:
         results = res.X # GA, SOO
+        res_F = res.F
     
     recommend_command = ''
     
@@ -107,7 +109,7 @@ def GA_optimization(knobs, fitness_function, logger, opt):
     recommend_command = make_dbbench_command(opt.target, recommend_command)
     logger.info(f"db_bench command is  {recommend_command}")
     
-    return res, recommend_command
+    return res_F, recommend_command
 
 def convert_int_to_category(col, cmd, s):
     if col=='compression_type':
