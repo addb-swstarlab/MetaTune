@@ -16,6 +16,7 @@ class Knob:
         self.internal_metrics = internal_metrics
         self.external_metrics = external_metrics
         self.target_wk = target_wk
+        self.external_metrics_size = self.external_metrics[self.target_wk].shape[-1]
         self.columns = self.knobs.columns
         # self.index_value = self.get_index_value()
         # self.KNOBSONEHOT_PATH = 'data/knobsOneHot.npy'
