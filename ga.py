@@ -57,10 +57,12 @@ class RocksDBMultiProblem(Problem):
         
         if self.model_mode == "RF":
             outputs = self.model.predict(x.cpu().detach().numpy())
-            outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs), 2)
+            # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs), 2)
+            # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs), 2)
         else:
             outputs = self.model(x)
-            outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+            outputs = outputs.cpu().detach().numpy()
+            # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
         outputs[:,1] = -outputs[:,1]
         out["F"] = outputs
 
