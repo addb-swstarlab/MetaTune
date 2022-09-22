@@ -29,62 +29,62 @@ from pytorch_tabnet.tab_model import TabNetRegressor
 # interpreter : py3.8
 
 
-'''ReshapeNet - activation : ReLU'''
-class ReshapeNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim=16, group_dim=32, wk_vec_dim=4, output_dim=1):
-        super(ReshapeNet, self).__init__()
-        self.input_dim = input_dim - wk_vec_dim
-        self.hidden_dim = hidden_dim
-        self.output_dim = output_dim
-        self.group_dim = group_dim
-        self.wk_vec_dim = wk_vec_dim
+# '''ReshapeNet - activation : ReLU'''
+# class ReshapeNet(nn.Module):
+#     def __init__(self, input_dim, hidden_dim=16, group_dim=32, wk_vec_dim=4, output_dim=1):
+#         super(ReshapeNet, self).__init__()
+#         self.input_dim = input_dim - wk_vec_dim
+#         self.hidden_dim = hidden_dim
+#         self.output_dim = output_dim
+#         self.group_dim = group_dim
+#         self.wk_vec_dim = wk_vec_dim
 
-        self.embedding = nn.Linear(self.wk_vec_dim, self.hidden_dim)
-        #self.knob_fc = nn.Sequential(nn.Linear(self.input_dim, self.hidden_dim*self.group_dim), nn.Sigmoid()) # (22, 1) -> (group*hidden, 1)
-        self.knob_fc = nn.Sequential(nn.Linear(self.input_dim, self.hidden_dim*self.group_dim), nn.ReLU()) # (22, 1) -> (group*hidden, 1)
-        self.attention = nn.MultiheadAttention(self.hidden_dim, 1)
-        #self.active = nn.Sigmoid()
-        self.activate = nn.ReLU()
-        self.fc = nn.Linear(self.hidden_dim, self.output_dim)
+#         self.embedding = nn.Linear(self.wk_vec_dim, self.hidden_dim)
+#         #self.knob_fc = nn.Sequential(nn.Linear(self.input_dim, self.hidden_dim*self.group_dim), nn.Sigmoid()) # (22, 1) -> (group*hidden, 1)
+#         self.knob_fc = nn.Sequential(nn.Linear(self.input_dim, self.hidden_dim*self.group_dim), nn.ReLU()) # (22, 1) -> (group*hidden, 1)
+#         self.attention = nn.MultiheadAttention(self.hidden_dim, 1)
+#         #self.active = nn.Sigmoid()
+#         self.activate = nn.ReLU()
+#         self.fc = nn.Linear(self.hidden_dim, self.output_dim)
 
-    def forward(self, x):
-        wk = x[:, -self.wk_vec_dim:] # only workload information
-        x = x[:, :-self.wk_vec_dim] # only knobs
+#     def forward(self, x):
+#         wk = x[:, -self.wk_vec_dim:] # only workload information
+#         x = x[:, :-self.wk_vec_dim] # only knobs
         
-        self.embed_wk = self.embedding(wk) # (batch, 4) -> (batch, dim)
-        self.embed_wk = self.embed_wk.unsqueeze(1) # (batch, 1, dim)
-        self.x = self.knob_fc(x) # (batch, 22) -> (batch, group*hidden)
-        self.res_x = torch.reshape(self.x, (-1, self.group_dim, self.hidden_dim)) # (batch, group, hidden)
+#         self.embed_wk = self.embedding(wk) # (batch, 4) -> (batch, dim)
+#         self.embed_wk = self.embed_wk.unsqueeze(1) # (batch, 1, dim)
+#         self.x = self.knob_fc(x) # (batch, 22) -> (batch, group*hidden)
+#         self.res_x = torch.reshape(self.x, (-1, self.group_dim, self.hidden_dim)) # (batch, group, hidden)
         
-        # attn_ouptut = (1, batch, hidden), attn_weights = (batch, 1, group)
-        self.attn_output, self.attn_weights = self.attention(self.embed_wk.permute((1,0,2)), self.res_x.permute((1,0,2)), self.res_x.permute((1,0,2)))
-        self.attn_output = self.activate(self.attn_output.squeeze())
-        outs = self.attn_output
-        self.outputs = self.fc(outs)  
-        return self.outputs
+#         # attn_ouptut = (1, batch, hidden), attn_weights = (batch, 1, group)
+#         self.attn_output, self.attn_weights = self.attention(self.embed_wk.permute((1,0,2)), self.res_x.permute((1,0,2)), self.res_x.permute((1,0,2)))
+#         self.attn_output = self.activate(self.attn_output.squeeze())
+#         outs = self.attn_output
+#         self.outputs = self.fc(outs)  
+#         return self.outputs
     
-    def parameterised(self, x, weights):
-        # like forward, but uses ``weights`` instead of ``model.parameters()``
-        # it'd be nice if this could be generated automatically for any nn.Module...
-        # https://easy-going-programming.tistory.com/11
-        wk = x[:, -self.wk_vec_dim:] # only workload information
-        x = x[:, :-self.wk_vec_dim] # only knobs
-        embed_wk = F.linear(wk, weights[0], weights[1])
-        embed_wk = embed_wk.unsqueeze(1)
-        x = F.linear(x, weights[2], weights[3] )    # (22, 1) -> (group*hidden, 1)
-        #x = F.sigmoid(x)
-        x = F.relu(x)
-        self.p_res_x = torch.reshape(x, (-1, self.group_dim, self.hidden_dim)) # (batch, group, hidden)
-        # attn_output, self.attn_weights = self.attention(embed_wk.permute((1,0,2)), res_x.permute((1,0,2)), res_x.permute((1,0,2)))
-        attn_output, _ = F.multi_head_attention_forward(embed_wk.permute((1,0,2)), self.p_res_x.permute((1,0,2)), self.p_res_x.permute((1,0,2)), self.hidden_dim, 1, 
-                                                        weights[4], weights[5], 
-                                                        None, None, False, 0,
-                                                        weights[6], weights[7]) # self.attention(embed_wk.permute((1,0,2)), res_x.permute((1,0,2)), res_x.permute((1,0,2)))
-        #attn_output = F.sigmoid(attn_output.squeeze())
-        attn_output = F.relu(attn_output.squeeze())
-        outputs = F.linear(attn_output, weights[8], weights[9])
+#     def parameterised(self, x, weights):
+#         # like forward, but uses ``weights`` instead of ``model.parameters()``
+#         # it'd be nice if this could be generated automatically for any nn.Module...
+#         # https://easy-going-programming.tistory.com/11
+#         wk = x[:, -self.wk_vec_dim:] # only workload information
+#         x = x[:, :-self.wk_vec_dim] # only knobs
+#         embed_wk = F.linear(wk, weights[0], weights[1])
+#         embed_wk = embed_wk.unsqueeze(1)
+#         x = F.linear(x, weights[2], weights[3] )    # (22, 1) -> (group*hidden, 1)
+#         #x = F.sigmoid(x)
+#         x = F.relu(x)
+#         self.p_res_x = torch.reshape(x, (-1, self.group_dim, self.hidden_dim)) # (batch, group, hidden)
+#         # attn_output, self.attn_weights = self.attention(embed_wk.permute((1,0,2)), res_x.permute((1,0,2)), res_x.permute((1,0,2)))
+#         attn_output, _ = F.multi_head_attention_forward(embed_wk.permute((1,0,2)), self.p_res_x.permute((1,0,2)), self.p_res_x.permute((1,0,2)), self.hidden_dim, 1, 
+#                                                         weights[4], weights[5], 
+#                                                         None, None, False, 0,
+#                                                         weights[6], weights[7]) # self.attention(embed_wk.permute((1,0,2)), res_x.permute((1,0,2)), res_x.permute((1,0,2)))
+#         #attn_output = F.sigmoid(attn_output.squeeze())
+#         attn_output = F.relu(attn_output.squeeze())
+#         outputs = F.linear(attn_output, weights[8], weights[9])
 
-        return outputs                           
+#         return outputs                           
 
 
 class MAML_one_batch():
@@ -105,8 +105,8 @@ class MAML_one_batch():
         self.num_epochs = num_epochs
         self.inner_lr = inner_lr
         self.meta_lr = meta_lr
-        self.dot = dot
-        self.lamb = lamb
+        # self.dot = dot
+        # self.lamb = lamb
 
         # self.meta_tasks = meta_tasks    # list of using workload number for MAML
         self.num_meta_tasks = len(self.train_dataloaders)    # len(train_dataloaders) = len(test_dataloaders) 
@@ -164,19 +164,15 @@ class MAML_one_batch():
         # perform training on data sampled from task
         X, y = self.sample_tr[0], self.sample_tr[1]
         
-        inner_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
+        ###################################################################################
+        inner_loss = self.criterion(self.model.parameterised(X, temp_weights), y)  
         grad = torch.autograd.grad(inner_loss, temp_weights)
-        temp_weights = [w - self.inner_lr * g for w, g in zip(temp_weights, grad)]
+        temp_weights = [w - self.inner_lr * g for w, g in zip(temp_weights, grad)]  
 
         temp_pred = self.model.parameterised(X, temp_weights)
         # calculate loss for update maml weight (with update inner loop weight)
-        if self.dot:
-            d = torch.bmm(self.model.p_res_x, self.model.p_res_x.transpose(1, 2))
-            dot_loss = F.mse_loss(d, torch.eye(d.size(1)).repeat(X.shape[0], 1, 1).cuda())
-            meta_loss = (1-self.lamb)*self.criterion(temp_pred, y) + self.lamb*dot_loss
-            # meta_loss = (1-self.lamb)*F.mse_loss(self.model.parameterised(X, temp_weights), y) + self.lamb*dot_loss
-        else:
-            meta_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
+
+        meta_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
         
         return inner_loss, meta_loss
     
