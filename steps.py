@@ -56,8 +56,8 @@ def train_fitness_function(knobs, logger, opt):
         rf.fit(knobs.norm_X_tr.cpu().detach().numpy(), knobs.norm_em_tr.cpu().detach().numpy())
         return rf, rf.predict(knobs.norm_X_te.cpu().detach().numpy())
 
-    elif opt.mode == 'dnn': model = SingleNet(input_dim=knobs.norm_X_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
-    elif opt.mode == 'tabnet': origin_model = TabNetRegressor()
+    # elif opt.mode == 'dnn': tmp_model = SingleNet(input_dim=knobs.norm_X_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
+    # elif opt.mode == 'tabnet': tmp_model = TabNetRegressor()
 
     if opt.train_type == 'wmaml': 
 
@@ -72,11 +72,23 @@ def train_fitness_function(knobs, logger, opt):
         logger.info(f"[Train MODE] 2nd step of train model (adaptation)")
         model = wmaml.model
 
-    elif opt.train_type == 'ranking_step_pretrain' or opt.train_type == 'rsp':
-        for i in range(WK_NUM): # WK_NUM 개수만큼 반복 (similarity가 낮은 워크로드부터 훈련)
+    # elif opt.train_type == 'ranking_step_pretrain' or opt.train_type == 'rsp':
+    #     best_loss = 100
+    #     for i in range(WK_NUM): # WK_NUM 개수만큼 반복 (similarity가 낮은 워크로드부터 훈련)           
+    #         name = get_filename('model_save', 'model', '.pt')
+    #         for epoch in range(opt.epochs):
+    #             loss_tr = train(model, loader_tr, opt.lr)
+    #             loss_te, outputs = valid(model, loader_te)
             
+    #             logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
 
-
+    #             if best_loss > loss_te and epoch>15:
+    #                 best_loss = loss_te
+    #                 best_model = model
+    #                 best_outputs = outputs
+    #                 torch.save(best_model, os.path.join('model_save', name))
+    #         logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
+                       
     else:
         dataset_tr = RocksDBDataset(knobs.norm_X_tr, knobs.norm_em_tr)
         dataset_te = RocksDBDataset(knobs.norm_X_te, knobs.norm_em_te)
@@ -85,7 +97,7 @@ def train_fitness_function(knobs, logger, opt):
         loader_tr = DataLoader(dataset = dataset_tr, batch_size = opt.batch_size, shuffle=True)
         loader_te = DataLoader(dataset = dataset_te, batch_size = opt.batch_size, shuffle=False)
 
-        
+        model = SingleNet(input_dim=knobs.norm_X_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()        
 
         # if opt.train:       
         logger.info(f"[Train MODE] Training Model") 
