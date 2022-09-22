@@ -62,14 +62,21 @@ def train_fitness_function(knobs, logger, opt):
         '''
 
         data_mapping = []
+        origin_model = TabNetRegressor() 
+        wmaml = MAML_one_batch(origin_model, 
+                               Train_task_MAML_DL_tr, Train_task_MAML_DL_tr, Train_task_MAML_DL_te, 
+                               num_epochs=120, inner_lr=pram[i][0], meta_lr=pram[i][1], meta_mean=pram[i][2])
+        wmaml.main_loop()
         
-
         '''
         2nd step of train model (adaptation)
         '''
 
         data_target = []
         
+        model = wmaml.model
+        
+
 
     else:
         dataset_tr = RocksDBDataset(knobs.norm_X_tr, knobs.norm_em_tr)
