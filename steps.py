@@ -57,26 +57,17 @@ def train_fitness_function(knobs, logger, opt):
 
 
     if opt.wmaml:
-        '''
-        1st step of train model (wmaml)
-        '''
 
+        logger.info(f"[Train MODE] 1st step of train model (wmaml)")
         data_mapping = []
         origin_model = TabNetRegressor() 
         wmaml = MAML_one_batch(origin_model, 
                                Train_task_MAML_DL_tr, Train_task_MAML_DL_tr, Train_task_MAML_DL_te, 
                                num_epochs=120, inner_lr=pram[i][0], meta_lr=pram[i][1], meta_mean=pram[i][2])
         wmaml.main_loop()
-        
-        '''
-        2nd step of train model (adaptation)
-        '''
-
-        data_target = []
-        
+             
+        logger.info(f"[Train MODE] 2nd step of train model (adaptation)")
         model = wmaml.model
-        
-
 
     else:
         dataset_tr = RocksDBDataset(knobs.norm_X_tr, knobs.norm_em_tr)
@@ -90,27 +81,29 @@ def train_fitness_function(knobs, logger, opt):
 
         # if opt.train:       
         logger.info(f"[Train MODE] Training Model") 
-        best_loss = 100
-        name = get_filename('model_save', 'model', '.pt')
-        for epoch in range(opt.epochs):
-            loss_tr = train(model, loader_tr, opt.lr)
-            loss_te, outputs = valid(model, loader_te)
-        
-            logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
 
-            if best_loss > loss_te and epoch>15:
-                best_loss = loss_te
-                best_model = model
-                best_outputs = outputs
-                torch.save(best_model, os.path.join('model_save', name))
-        logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
-        
-        return best_model, best_outputs
-        # elif opt.eval:
-        #     logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
-        #     model = torch.load(os.path.join('model_save',opt.model_path))
-        #     _, outputs = valid(model, loader_te)
-        #     return model, outputs
+    ###################################################################################################     
+    best_loss = 100
+    name = get_filename('model_save', 'model', '.pt')
+    for epoch in range(opt.epochs):
+        loss_tr = train(model, loader_tr, opt.lr)
+        loss_te, outputs = valid(model, loader_te)
+    
+        logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
+
+        if best_loss > loss_te and epoch>15:
+            best_loss = loss_te
+            best_model = model
+            best_outputs = outputs
+            torch.save(best_model, os.path.join('model_save', name))
+    logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
+    
+    return best_model, best_outputs
+    # elif opt.eval:
+    #     logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
+    #     model = torch.load(os.path.join('model_save',opt.model_path))
+    #     _, outputs = valid(model, loader_te)
+    #     return model, outputs
 
 def GA_optimization(knobs, fitness_function, logger, opt):
     if opt.ga == 'GA':
