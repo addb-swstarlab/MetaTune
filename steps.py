@@ -5,6 +5,7 @@ from datetime import datetime
 # from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import DataLoader
+from main import WK_NUM
 from network import RocksDBDataset, SingleNet
 from train import train, valid
 from utils import get_filename
@@ -55,12 +56,14 @@ def train_fitness_function(knobs, logger, opt):
         rf.fit(knobs.norm_X_tr.cpu().detach().numpy(), knobs.norm_em_tr.cpu().detach().numpy())
         return rf, rf.predict(knobs.norm_X_te.cpu().detach().numpy())
 
+    elif opt.mode == 'dnn': model = SingleNet(input_dim=knobs.norm_X_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
+    elif opt.mode == 'tabnet': origin_model = TabNetRegressor()
 
-    if opt.wmaml:
+    if opt.train_type == 'wmaml': 
 
         logger.info(f"[Train MODE] 1st step of train model (wmaml)")
         data_mapping = []
-        origin_model = TabNetRegressor() 
+        origin_model = TabNetRegressor()    # if opt.mode == 'dnn': origin_model = SingleNet(@@@) ?
         wmaml = MAML_one_batch(origin_model, 
                                Train_task_MAML_DL_tr, Train_task_MAML_DL_tr, Train_task_MAML_DL_te, 
                                num_epochs=120, inner_lr=pram[i][0], meta_lr=pram[i][1], meta_mean=pram[i][2])
@@ -68,6 +71,11 @@ def train_fitness_function(knobs, logger, opt):
              
         logger.info(f"[Train MODE] 2nd step of train model (adaptation)")
         model = wmaml.model
+
+    elif opt.train_type == 'ranking_step_pretrain' or opt.train_type == 'rsp':
+        for i in range(WK_NUM): # WK_NUM 개수만큼 반복 (similarity가 낮은 워크로드부터 훈련)
+            
+
 
     else:
         dataset_tr = RocksDBDataset(knobs.norm_X_tr, knobs.norm_em_tr)
@@ -77,7 +85,7 @@ def train_fitness_function(knobs, logger, opt):
         loader_tr = DataLoader(dataset = dataset_tr, batch_size = opt.batch_size, shuffle=True)
         loader_te = DataLoader(dataset = dataset_te, batch_size = opt.batch_size, shuffle=False)
 
-        model = SingleNet(input_dim=knobs.norm_X_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
+        
 
         # if opt.train:       
         logger.info(f"[Train MODE] Training Model") 
