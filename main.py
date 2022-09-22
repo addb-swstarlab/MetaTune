@@ -54,6 +54,8 @@ INTERNAL_PATH = 'data/internal'
 WK_NUM = 1
 # WK_NUM = 16
 
+REPO_PATH = 'data/repository/[]'
+
 def main():
     logger.info("## get raw datas ##")
     raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
