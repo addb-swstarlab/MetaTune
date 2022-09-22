@@ -155,11 +155,15 @@ class MAML_one_batch():
 
     def inner_loop(self, model, iter):     # i: task , iteration : iteration
         # reset inner model to current maml weights
+
+        # define tmp_model for wmaml (copy original model)
         tmp_model = TabNetRegressor()
-        tmp_model.load_state_dict(model.state_dict())
+        tmp_model.load_state_dict(model.state_dict())   # copy weight of origin model
+
+
         # perform training on data sampled from task
-        
         X, y = self.sample_tr[0], self.sample_tr[1]
+        
         inner_loss = self.criterion(self.model.parameterised(X, temp_weights), y)
         grad = torch.autograd.grad(inner_loss, temp_weights)
         temp_weights = [w - self.inner_lr * g for w, g in zip(temp_weights, grad)]
