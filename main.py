@@ -65,6 +65,10 @@ def main():
     internal_dict = {}
     external_dict = {}
 
+    '''
+    data 매핑용하고 타겟용 구분 지어서 변수 지정
+    '''
+
     pruned_im = pd.read_csv(os.path.join(INTERNAL_PATH, 'internal_ensemble_pruned_tmp.csv'), index_col=0)
     for wk in range(WK_NUM):
         im = pd.read_csv(os.path.join(INTERNAL_PATH, f'internal_results_{wk}.csv'), index_col=0)
