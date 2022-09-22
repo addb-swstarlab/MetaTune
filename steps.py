@@ -60,12 +60,15 @@ def train_fitness_function(knobs, logger, opt):
         '''
         1st step of train model (wmaml)
         '''
+
         data_mapping = []
+        
 
         '''
         2nd step of train model (adaptation)
         '''
-        
+
+        data_target = []
         
 
     else:
