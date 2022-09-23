@@ -30,7 +30,9 @@ parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA bat
 # parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
 parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 # parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
-parser.add_argument('--wmaml', action='store_true', help='Choose train with wmaml or not')
+
+# 'ranking_step_pretrain(or 'rsp') part will be updated later
+parser.add_argument('--train_type', type=str, default='normal', help="Choose train type 'normal', 'wmaml', 'ranking_step_pretrain(or 'rsp')")
 
 
 opt = parser.parse_args()
@@ -102,7 +104,6 @@ def main():
     (+ data mapping first)
     '''
     
-
     fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
 
     # if outputs' type are torch.tensor
