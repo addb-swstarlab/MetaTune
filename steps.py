@@ -72,6 +72,7 @@ def train_fitness_function(knobs, logger, opt):
         logger.info(f"[Train MODE] 2nd step of train model (adaptation)")
         model = wmaml.model
 
+    ######################### 나중에 wmaml, ranking_step_pretrain, normal if문 정리############################
     # elif opt.train_type == 'ranking_step_pretrain' or opt.train_type == 'rsp':
     #     best_loss = 100
     #     for i in range(WK_NUM): # WK_NUM 개수만큼 반복 (similarity가 낮은 워크로드부터 훈련)           
@@ -104,7 +105,8 @@ def train_fitness_function(knobs, logger, opt):
 
     ###################################################################################################     
     best_loss = 100
-    name = get_filename('model_save', 'model', '.pt')
+    # name = get_filename('model_save', 'model', '.pt')
+    name = get_filename('model_save', opt.train_type, '.pt')
     for epoch in range(opt.epochs):
         loss_tr = train(model, loader_tr, opt.lr)
         loss_te, outputs = valid(model, loader_te)
