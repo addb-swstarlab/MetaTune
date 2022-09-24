@@ -16,7 +16,7 @@ os.system('clear')
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
 parser.add_argument('--target_size', type=int, default=10, help='Define target workload size')
-parser.add_argument('--lr', type=float, default=0.001, help='Define learning rate')
+parser.add_argument('--lr', type=float, default=0.001, help='Define learning rate') # + use ad meta-lr for main loop of wmaml train
 parser.add_argument('--epochs', type=int, default=30, help='Define train epochs')
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
 parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
@@ -33,6 +33,8 @@ parser.add_argument('--save', action='store_true', help='Choose save the score o
 
 # 'ranking_step_pretrain(or 'rsp') part will be updated later
 parser.add_argument('--train_type', type=str, default='normal', help="Choose train type 'normal', 'wmaml', 'ranking_step_pretrain(or 'rsp')")
+parser.add_argument('--in_lr', type=float, default=0.001, help='Define inner_learning rate for inner loop of wmaml train')
+
 
 
 opt = parser.parse_args()
