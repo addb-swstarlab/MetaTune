@@ -65,8 +65,8 @@ def train_fitness_function(knobs, logger, opt):
         data_mapping = []
         origin_model = TabNetRegressor()    # if opt.mode == 'dnn': origin_model = SingleNet(@@@) ?
         wmaml = MAML_one_batch(origin_model, 
-                               Train_task_MAML_DL_tr, Train_task_MAML_DL_tr, Train_task_MAML_DL_te, 
-                               num_epochs=120, inner_lr=pram[i][0], meta_lr=pram[i][1], meta_mean=pram[i][2])
+                               knobs.norm_X_dict, knobs.norm_im_dict, knobs.norm_em_dict, 
+                               num_epochs=opt.epochs, inner_lr=opt.inner_lr, meta_lr=opt._lr)
         wmaml.main_loop()
              
         logger.info(f"[Train MODE] 2nd step of train model (adaptation)")
