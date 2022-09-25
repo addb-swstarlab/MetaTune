@@ -93,3 +93,25 @@ def rocksdb_knobs_make_dict(knobs_path):
     dict_data['rowlabels'] = np.array(rowlabels)
     dict_data['columnlabels'] = np.array(columns[0])
     return dict_data
+
+
+## For maml steps
+class Sampler():  
+    def __init__(self, dataloaders):
+        self.wk_num = len(dataloaders)
+        self.dataloaders = dataloaders
+        self.iterators = self.get_iterators()
+
+    def get_iterators(self):
+        iterators = []
+        for i in range(self.wk_num):
+            # wk = self.wk_num[i]
+            iterators.append(iter(self.dataloaders[i]))
+        return iterators
+
+    def get_sample(self):
+        samples = {}
+        for i in range(self.wk_num):
+            # wk = self.wk_num[i]            
+            samples[i] = next(self.iterators[i])
+        return samples
