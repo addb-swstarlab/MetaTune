@@ -3,7 +3,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from benchmark import exec_benchmark
-from utils import get_logger, rocksdb_knobs_make_dict
+from utils import get_logger, rocksdb_knobs_make_dict, mysql_knob_dataframe, mysql_metrics_dataframe
 from knobs import Knob
 from steps import train_fitness_function, GA_optimization
 from sklearn.metrics import r2_score
@@ -59,8 +59,11 @@ WK_NUM = 1
 
 def main():
     logger.info("## get raw datas ##")
-    raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
-    raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
+    if opt.dbms == "rocksdb":
+        raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
+        raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
+    # elif opt.dbms == "mysql":
+        # raw_knobs = mysql_knob_dataframe(KNOB_PATH)
     
     internal_dict = {}
     external_dict = {}
