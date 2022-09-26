@@ -1,6 +1,8 @@
 import datetime
 import os, logging
 import numpy as np
+import pandas as pd
+import configparser
 
 def get_filename(PATH, head, tail):
     i = 0
@@ -88,3 +90,35 @@ def rocksdb_knobs_make_dict(knobs_path):
     dict_data['rowlabels'] = np.array(rowlabels)
     dict_data['columnlabels'] = np.array(columns[0])
     return dict_data
+
+def mysql_knob_dataframe(knobs_path):
+    config_len = len(os.listdir(knobs_path))
+    cnf_parser = configparser.ConfigParser()
+    pd_mysql = pd.DataFrame()
+    for idx in range(config_len):
+        cnf_parser.read(os.path.join(knobs_path, f'my_{idx}.cnf'))
+        conf_dict = cnf_parser._sections['mysqld']
+        tmp = pd.DataFrame(data=[conf_dict.values()], columns=conf_dict.keys())
+        pd_mysql = pd.concat([pd_mysql, tmp])
+        
+    pd_mysql = pd_mysql.reset_index(drop=True)
+    pd_mysql = pd_mysql.drop(columns=['log-error', 'bind-address'])
+    return pd_mysql
+
+def mysql_metrics_dataframe(wk, internal_path, external_path):
+    internal = pd.read_csv(os.path.join(internal_path, f'internal_results_{wk}.csv'), index_col=0)
+    ## Drop oolumns contained unique data
+    unique_data_column = []
+    for col in internal.columns:
+        if len(pd.value_counts(internal[col])) == 1:
+            unique_data_column.append(col)
+    internal = internal.drop(columns=unique_data_column)
+    
+    external = pd.read_csv(os.path.join(external_path, f'external_results_{wk}.csv'), index_col=0)
+    latency_columns = []
+    for col in external.columns:
+        if col.find("latency") == 0 and col != 'latency_max' and col != 'latency_CLEANUP':
+            latency_columns.append(col)
+    external_ = external[['tps']].copy()
+    external_['latency'] = external[latency_columns].max(axis=1)
+    return internal, external_
