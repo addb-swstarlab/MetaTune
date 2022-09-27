@@ -91,7 +91,8 @@ def rocksdb_knobs_make_dict(knobs_path):
     dict_data['columnlabels'] = np.array(columns[0])
     return dict_data
 
-def mysql_knob_dataframe(knobs_path):
+def mysql_knob_dataframe(wk, knobs_path):
+    knobs_path = os.path.join(knobs_path, str(wk))
     config_len = len(os.listdir(knobs_path))
     cnf_parser = configparser.ConfigParser()
     pd_mysql = pd.DataFrame()
