@@ -22,7 +22,7 @@ class Knob:
         # self.KNOBSONEHOT_PATH = 'data/knobsOneHot.npy'
         # self.knobs_one_hot = self.load_knobsOneHot()
         # self.TABLE_PATH = 'data/lookuptable'
-        self.DEFAULT_EM_PATH = 'data/external/default_external.csv'
+        self.DEFAULT_EM_PATH = '/home/jieun/DBMOO/data/rocksdb/external/default_external.csv'
         self.default_trg_em = self.get_trg_default()
         self.get_range()
         # self.sample_size = sample_size # define sample size, max is 20,000
