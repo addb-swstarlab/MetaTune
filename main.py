@@ -154,7 +154,7 @@ def main():
     logger.info(f'average pcc score = {pcc_res:.4f}')
     logger.info('[CI SCORE]')
     logger.info(f'average ci score = {ci_res:.4f}')
-    
+    assert False
     res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
     
     if opt.ga == "NSGA2":
