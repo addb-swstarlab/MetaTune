@@ -62,8 +62,8 @@ def main():
     if opt.dbms == "rocksdb":
         raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
         raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
-    # elif opt.dbms == "mysql":
-        # raw_knobs = mysql_knob_dataframe(KNOB_PATH)
+    elif opt.dbms == "mysql":
+        raw_knobs = mysql_knob_dataframe(KNOB_PATH)
     
     internal_dict = {}
     external_dict = {}
