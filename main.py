@@ -51,41 +51,55 @@ for i in vars(opt):
     logger.info(f'{i}: {vars(opt)[i]}')
 
 DBMS_PATH = f'{opt.dbms}'
-KNOB_PATH = os.path.join(DBMS_PATH, 'data/configs')
-EXTERNAL_PATH = os.path.join(DBMS_PATH, 'data/external')
-INTERNAL_PATH = os.path.join(DBMS_PATH, 'data/internal')
-WK_NUM = 1
-# WK_NUM = 16
+KNOB_PATH = os.path.join('data', DBMS_PATH, 'configs')
+EXTERNAL_PATH = os.path.join('data', DBMS_PATH, 'external')
+INTERNAL_PATH = os.path.join('data', DBMS_PATH, 'internal')
+WK_NUM = 3 # MySQL
+# WK_NUM = 16 # RocksDB
 
 def main():
     logger.info("## get raw datas ##")
-    if opt.dbms == "rocksdb":
-        raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
-        raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
-    elif opt.dbms == "mysql":
-        raw_knobs = mysql_knob_dataframe(KNOB_PATH)
     
     internal_dict = {}
     external_dict = {}
+    
+    if opt.dbms == "rocksdb":
+        '''
+            When using rocksdb dbms, raw_knobs is a dataframe type
+        '''
+        raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
+        raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
+        
+        pruned_im = pd.read_csv(os.path.join(INTERNAL_PATH, 'internal_ensemble_pruned_tmp.csv'), index_col=0)
+        for wk in range(WK_NUM):
+            im = pd.read_csv(os.path.join(INTERNAL_PATH, f'internal_results_{wk}.csv'), index_col=0)
+            internal_dict[wk] = im[pruned_im.columns]
+        if opt.target > 15:
+            im = pd.read_csv(f'data/target_workload/{opt.target}/internal_results_11.csv', index_col=0)
+            internal_dict[wk+1] = im[pruned_im.columns]
 
-    pruned_im = pd.read_csv(os.path.join(INTERNAL_PATH, 'internal_ensemble_pruned_tmp.csv'), index_col=0)
-    for wk in range(WK_NUM):
-        im = pd.read_csv(os.path.join(INTERNAL_PATH, f'internal_results_{wk}.csv'), index_col=0)
-        internal_dict[wk] = im[pruned_im.columns]
-    if opt.target > 15:
-        im = pd.read_csv(f'data/target_workload/{opt.target}/internal_results_11.csv', index_col=0)
-        internal_dict[wk+1] = im[pruned_im.columns]
-
-    for wk in range(WK_NUM):
-        ex = pd.read_csv(os.path.join(EXTERNAL_PATH, f'external_results_{wk}.csv'), index_col=0)
-        external_dict[wk] = ex
-    if opt.target > 15:
-        ex = pd.read_csv(f'data/target_workload/{opt.target}/external_results_11.csv', index_col=0)
-        external_dict[wk+1] = ex
+        for wk in range(WK_NUM):
+            ex = pd.read_csv(os.path.join(EXTERNAL_PATH, f'external_results_{wk}.csv'), index_col=0)
+            external_dict[wk] = ex
+        if opt.target > 15:
+            ex = pd.read_csv(f'data/target_workload/{opt.target}/external_results_11.csv', index_col=0)
+            external_dict[wk+1] = ex
+        
+    elif opt.dbms == "mysql":
+        '''
+            When using mysql dbms, raw_knobs is a dictionary type; keys represent workload number
+        '''
+        raw_knobs = {}
+        for wk in range(WK_NUM):
+            raw_knobs[wk] = mysql_knob_dataframe(KNOB_PATH)
+            
+            internal_dict[wk], external_dict[wk] = mysql_metrics_dataframe(wk, INTERNAL_PATH, EXTERNAL_PATH)
+        
+    
     logger.info('## get raw datas DONE ##')
 
 
-    knobs = Knob(raw_knobs, internal_dict, external_dict, opt.target)
+    knobs = Knob(raw_knobs, internal_dict, external_dict, opt)
 
 
     knobs.split_data()
@@ -119,7 +133,10 @@ def main():
 
     r2_res = r2_score(true, pred, multioutput='raw_values')
     logger.info('[R2 SCORE]')
-    logger.info(f'TIME:{r2_res[0]:.4f}, RATE:{r2_res[1]:.4f}, WAF:{r2_res[2]:.4f}, SA:{r2_res[3]:.4f}')
+    if opt.dbms == 'rocksdb':
+        logger.info(f'TIME:{r2_res[0]:.4f}, RATE:{r2_res[1]:.4f}, WAF:{r2_res[2]:.4f}, SA:{r2_res[3]:.4f}')
+    elif opt.dbms == 'mysql':
+        logger.info(f'TPS:{r2_res[0]:.1f}, LATENCY:{r2_res[1]:.1f}')
     r2_res = np.average(r2_res)
     logger.info(f'average r2 score = {r2_res:.4f}')
     
@@ -133,46 +150,26 @@ def main():
     pcc_res = pcc_res/knobs.external_metrics_size
     ci_res = ci_res/knobs.external_metrics_size
     
-    # pcc_res = np.zeros(4)
-    # ci_res = np.zeros(4)
-    # for idx in range(4):
-    #     res, _ = pearsonr(true[:,idx], pred[:,idx])  
-    #     pcc_res[idx] = res
-    #     res = concordance_index(true[:,idx], pred[:,idx])
-    #     ci_res[idx] = res
-    # pcc_res = pcc_res/len(true)
-    # ci_res = ci_res/len(true)
     logger.info('[PCC SCORE]')
-    # logger.info(f'TIME:{pcc_res[0]:.4f}, RATE:{pcc_res[1]:.4f}, WAF:{pcc_res[2]:.4f}, SA:{pcc_res[3]:.4f}')
-    # logger.info(f'average pcc score = {np.average(pcc_res):.4f}')
     logger.info(f'average pcc score = {pcc_res:.4f}')
     logger.info('[CI SCORE]')
-    # logger.info(f'TIME:{ci_res[0]:.4f}, RATE:{ci_res[1]:.4f}, WAF:{ci_res[2]:.4f}, SA:{ci_res[3]:.4f}')
-    # logger.info(f'average ci score = {np.average(ci_res):.4f}')
     logger.info(f'average ci score = {ci_res:.4f}')
-        
-
-    
-    # file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_prediction_score.csv"
-    # if os.path.isfile(file_name) is False:
-    #     pd.DataFrame(data=['r2', 'pcc', 'ci'], columns=['score']).to_csv(file_name, index=False)
-    # pred_score = pd.read_csv(file_name, index_col=0)
-    # if opt.bidirect:
-    #     pred_score[f'{opt.target}_bi{opt.mode}'] = [r2_res, pcc_res, ci_res]
-    # else:
-    #     pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
-    # pred_score.to_csv(file_name)
     
     res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
-
+    
     if opt.ga == "NSGA2":
         logger.info(f'## Predicted External metrics from genetic algorithm ##')
-        logger.info(f'TIME: {res_F[0]}')
-        logger.info(f'RATE: {res_F[1]}')
-        logger.info(f'WAF: {res_F[2]}')
-        logger.info(f'SA: {res_F[3]}')
-        logger.info("## Train/Load Fitness Function DONE ##")
-        logger.info("## Configuration Recommendation DONE ##")
+        if opt.dbms == 'rocksdb':
+            logger.info(f'TIME: {res_F[0]}')
+            logger.info(f'RATE: {res_F[1]}')
+            logger.info(f'WAF: {res_F[2]}')
+            logger.info(f'SA: {res_F[3]}')
+        elif opt.dbms == 'mysql':
+            logger.info(f'TPS: {res_F[0]}')
+            logger.info(f'LATENCY: {res_F[1]}')
+    
+    logger.info("## Train/Load Fitness Function DONE ##")
+    logger.info("## Configuration Recommendation DONE ##")
     
     exec_benchmark(recommend_command, opt)
     
