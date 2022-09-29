@@ -160,5 +160,15 @@ def make_dbbench_command(knobs, results, trg_wk):
     return cmd
 
 def make_mysql_configuration(knobs, results):
+    R_MYSQL_PATH = 'rcmd_mysql_config'
+    if os.path.exists(R_MYSQL_PATH) is False:
+        os.makedirs(R_MYSQL_PATH)
+    
+    CONFIG_NAME = 'rcmd_my.cnf'
+    f = open(os.path.join(R_MYSQL_PATH, CONFIG_NAME), 'w')
+    f.write('[mysqld]\n')
+    f.write('log-error = /var/log/mysqld.log\n')
+    f.write('bind-address = 127.0.0.1\n')
+    f.close()
     for idx, col in enumerate(knobs.columns):
-        logging.info(f'{col} : {results[idx]}')
+        logging.info(f'{col} : {np.round(results[idx]).astype(int)}')
