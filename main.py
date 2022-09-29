@@ -5,7 +5,7 @@ import numpy as np
 from benchmark import exec_benchmark
 from utils import get_logger, rocksdb_knobs_make_dict, mysql_knob_dataframe, mysql_metrics_dataframe
 from knobs import Knob
-from steps import train_fitness_function, GA_optimization
+from steps import train_fitness_function, GA_optimization, make_dbbench_command, make_mysql_configuration
 from sklearn.metrics import r2_score
 from scipy.stats import pearsonr
 from lifelines.utils import concordance_index
@@ -156,7 +156,8 @@ def main():
     logger.info('[CI SCORE]')
     logger.info(f'average ci score = {ci_res:.4f}')
     
-    res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    # res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    res_F, results = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
     
     if opt.ga == "NSGA2":
         logger.info(f'## Predicted External metrics from genetic algorithm ##')
@@ -172,14 +173,28 @@ def main():
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
     
-    exec_benchmark(recommend_command, opt)
+    if opt.dbms=='rocksdb':
+        recommend_command = make_dbbench_command(knobs, results, opt.target)
+        logger.info(f"db_bench command is  {recommend_command}")
+        exec_benchmark(recommend_command, opt)
+        
+        if os.path.exists('res.txt'):
+            logger.info('## Results of External Metrics ##')
+            f = open('res.txt')
+            bench_res = f.readlines()
+            for _ in bench_res:
+                logger.info(f'{_[:-1]}')
+    elif opt.dbms=='mysql':
+        make_mysql_configuration(results)
     
-    if os.path.exists('res.txt'):
-        logger.info('## Results of External Metrics ##')
-        f = open('res.txt')
-        bench_res = f.readlines()
-        for _ in bench_res:
-            logger.info(f'{_[:-1]}')
+    # exec_benchmark(recommend_command, opt)
+    
+    # if os.path.exists('res.txt'):
+    #     logger.info('## Results of External Metrics ##')
+    #     f = open('res.txt')
+    #     bench_res = f.readlines()
+    #     for _ in bench_res:
+    #         logger.info(f'{_[:-1]}')
     # if opt.step:
     #     for s_cmd in step_recommend_command:
     #         exec_benchmark(s_cmd, opt)
