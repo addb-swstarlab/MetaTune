@@ -19,7 +19,7 @@ parser.add_argument('--dbms', type=str, choices=['rocksdb', 'mysql'], help='choo
 parser.add_argument('--target', type=int, default=0, help='Choose target workload')
 # parser.add_argument('--target_size', type=int, default=10, help='Define target workload size')
 parser.add_argument('--lr', type=float, default=0.001, help='Define learning rate')
-parser.add_argument('--epochs', type=int, default=30, help='Define train epochs')
+parser.add_argument('--epochs', type=int, default=50, help='Define train epochs')
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
 parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
 parser.add_argument('--ga', type=str, default='GA', choices=['GA', 'NSGA2', 'NSGA3'], help='choose genetic algorithm')
@@ -91,9 +91,10 @@ def main():
         '''
         raw_knobs = {}
         for wk in range(WK_NUM):
-            raw_knobs[wk] = mysql_knob_dataframe(KNOB_PATH)
+            raw_knobs[wk] = mysql_knob_dataframe(wk, KNOB_PATH)
             
             internal_dict[wk], external_dict[wk] = mysql_metrics_dataframe(wk, INTERNAL_PATH, EXTERNAL_PATH)
+        raw_knobs = raw_knobs[opt.target]
         
     
     logger.info('## get raw datas DONE ##')
@@ -136,7 +137,7 @@ def main():
     if opt.dbms == 'rocksdb':
         logger.info(f'TIME:{r2_res[0]:.4f}, RATE:{r2_res[1]:.4f}, WAF:{r2_res[2]:.4f}, SA:{r2_res[3]:.4f}')
     elif opt.dbms == 'mysql':
-        logger.info(f'TPS:{r2_res[0]:.1f}, LATENCY:{r2_res[1]:.1f}')
+        logger.info(f'TPS:{r2_res[0]:.4f}, LATENCY:{r2_res[1]:.4f}')
     r2_res = np.average(r2_res)
     logger.info(f'average r2 score = {r2_res:.4f}')
     
@@ -154,7 +155,7 @@ def main():
     logger.info(f'average pcc score = {pcc_res:.4f}')
     logger.info('[CI SCORE]')
     logger.info(f'average ci score = {ci_res:.4f}')
-    assert False
+    
     res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
     
     if opt.ga == "NSGA2":
