@@ -1,3 +1,4 @@
+import logging
 import os
 import numpy as np
 import pandas as pd
@@ -103,12 +104,14 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         results = res.X # GA, SOO
         res_F = res.F
     
-    recommend_command = ''
+    return res_F, results
+    recommend_command = make_dbbench_command(knobs, results, opt.target)
+    # recommend_command = ''
     
-    for idx, col in enumerate(knobs.columns):                 
-        recommend_command = convert_int_to_category(col, recommend_command, results[idx])
+    # for idx, col in enumerate(knobs.columns):                 
+    #     recommend_command = convert_int_to_category(col, recommend_command, results[idx])
 
-    recommend_command = make_dbbench_command(opt.target, recommend_command)
+    # recommend_command = make_dbbench_command(opt.target, recommend_command)
     logger.info(f"db_bench command is  {recommend_command}")
     
     return res_F, recommend_command
@@ -121,8 +124,28 @@ def convert_int_to_category(col, cmd, s):
         cmd += f'-{col}={int(s)} '
     return cmd
 
-def make_dbbench_command(trg_wk, rc_cmd):
-    wk_info = pd.read_csv('data/rocksdb_workload_info.csv', index_col=0)
+# def make_dbbench_command(trg_wk, rc_cmd):
+#     wk_info = pd.read_csv('data/rocksdb_workload_info.csv', index_col=0)
+#     f_wk_info = wk_info.loc[:,:'num']
+#     b_wk_info = wk_info.loc[:, 'benchmarks':]
+#     cmd = 'rocksdb/db_bench '   
+#     f_cmd = " ".join([f'-{_}={int(f_wk_info.loc[trg_wk][_])}' for _ in f_wk_info.columns])
+#     b_cmd = f"--{b_wk_info.columns[0]}={b_wk_info.loc[trg_wk][0]} "
+#     b_cmd += f"--statistics "
+#     if not np.isnan(b_wk_info.loc[trg_wk][1]):
+#         b_cmd += f"--{b_wk_info.columns[1]}={int(b_wk_info.loc[trg_wk][1])}"
+
+#     cmd += f_cmd + " " + rc_cmd + b_cmd + ' > /jieun/result.txt'
+
+#     return cmd
+
+def make_dbbench_command(knobs, results, trg_wk):
+    recommend_command = ''
+    
+    for idx, col in enumerate(knobs.columns):                 
+        recommend_command = convert_int_to_category(col, recommend_command, results[idx])
+    
+    wk_info = pd.read_csv('data/rocksdb/rocksdb_workload_info.csv', index_col=0)
     f_wk_info = wk_info.loc[:,:'num']
     b_wk_info = wk_info.loc[:, 'benchmarks':]
     cmd = 'rocksdb/db_bench '   
@@ -132,6 +155,10 @@ def make_dbbench_command(trg_wk, rc_cmd):
     if not np.isnan(b_wk_info.loc[trg_wk][1]):
         b_cmd += f"--{b_wk_info.columns[1]}={int(b_wk_info.loc[trg_wk][1])}"
 
-    cmd += f_cmd + " " + rc_cmd + b_cmd + ' > /jieun/result.txt'
+    cmd += f_cmd + " " + recommend_command + b_cmd + ' > /jieun/result.txt'
 
     return cmd
+
+def make_mysql_configuration(knobs, results):
+    for idx, col in enumerate(knobs.columns):
+        logging.info(f'{col} : {results[idx]}')
