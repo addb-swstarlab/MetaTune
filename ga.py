@@ -106,8 +106,7 @@ class MySQLSingleProblem(Problem):
             out["F"] = outputs[:,1] / outputs[:,0]
         else:
             outputs = self.model(x)
-            out["F"] = outputs[:,1] / outputs[:,0]
-        out["F"] = outputs
+            out["F"] = (outputs[:,1] / outputs[:,0]).cpu().detach().numpy()
 
 class MySQLMultiProblem(Problem):
     def __init__(self, knobs, model, model_mode):
@@ -134,7 +133,7 @@ class MySQLMultiProblem(Problem):
             outputs = self.model(x)
             outputs = outputs.cpu().detach().numpy()
             # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
-        outputs[:,1] = -outputs[:,0]
+        outputs[:,0] = -outputs[:,0]
         out["F"] = outputs
 
 def genetic_algorithm(mode, problem, pop_size, eliminate_duplicates=True):
