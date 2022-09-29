@@ -185,7 +185,7 @@ def main():
             for _ in bench_res:
                 logger.info(f'{_[:-1]}')
     elif opt.dbms=='mysql':
-        make_mysql_configuration(results)
+        make_mysql_configuration(knobs, results)
     
     # exec_benchmark(recommend_command, opt)
     
