@@ -8,6 +8,25 @@ import torch
 import pandas as pd
 import numpy as np
 
+
+class DBMSProblem():
+    def __init__(self, knobs, model, opt):
+        self.knobs = knobs
+        self.model = model
+        self.opt = opt
+    
+    def get_problem(self):
+        if self.opt.dbms == 'rocksdb':
+            if self.opt.ga == 'GA':
+                return RocksDBSingleProblem(knobs=self.knobs, model=self.model, model_mode=self.opt.mode)
+            elif self.opt.ga == 'NSGA2' or self.opt.ga == 'NSGA3':
+                return RocksDBMultiProblem(knobs=self.knobs, model=self.model, model_mode=self.opt.mode)
+        elif self.opt.dbms == 'mysql':
+            if self.opt.ga == 'GA':
+                return MySQLSingleProblem(knobs=self.knobs, model=self.model, model_mode=self.opt.mode)
+            elif self.opt.ga == 'NSGA2' or self.opt.ga == 'NSGA3':
+                return MySQLMultiProblem(knobs=self.knobs, model=self.model, model_mode=self.opt.mode)
+
 class RocksDBSingleProblem(Problem):
     def __init__(self, knobs, model, model_mode):
         self.knobs = knobs
@@ -64,6 +83,58 @@ class RocksDBMultiProblem(Problem):
             outputs = outputs.cpu().detach().numpy()
             # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
         outputs[:,1] = -outputs[:,1]
+        out["F"] = outputs
+
+class MySQLSingleProblem(Problem):
+    def __init__(self, knobs, model, model_mode):
+        self.knobs = knobs
+        self.model = model
+        self.model_mode = model_mode
+        # self.model.eval()
+        n_var = len(self.knobs.columns)
+        n_obj = 1
+        xl = self.knobs.lower_boundary
+        xu = self.knobs.upper_boundary
+        
+        super().__init__(n_var=n_var, n_obj=n_obj, xl=xl, xu=xu)
+        
+    def _evaluate(self, x, out, *args, **kwargs):
+        x = torch.Tensor(self.knobs.scaler_X.transform(x)).cuda()
+        
+        if self.model_mode == "RF":
+            outputs = self.model.predict(x.cpu().detach().numpy())
+            out["F"] = outputs[:,1] / outputs[:,0]
+        else:
+            outputs = self.model(x)
+            out["F"] = outputs[:,1] / outputs[:,0]
+        out["F"] = outputs
+
+class MySQLMultiProblem(Problem):
+    def __init__(self, knobs, model, model_mode):
+        self.knobs = knobs
+        self.model = model
+        self.model_mode = model_mode
+        # self.model.eval()
+        self.n_var = len(self.knobs.columns)
+        n_obj = self.knobs.default_trg_em.shape[-1] # # of external metrics
+        xl = self.knobs.lower_boundary
+        xu = self.knobs.upper_boundary
+        
+        
+        super().__init__(n_var=self.n_var, n_obj=n_obj, xl=xl, xu=xu)
+        
+    def _evaluate(self, x, out, *args, **kwargs):
+        x = torch.Tensor(self.knobs.scaler_X.transform(pd.DataFrame(data=x, columns=self.knobs.columns))).cuda()
+        
+        if self.model_mode == "RF":
+            outputs = self.model.predict(x.cpu().detach().numpy())
+            # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs), 2)
+            # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs), 2)
+        else:
+            outputs = self.model(x)
+            outputs = outputs.cpu().detach().numpy()
+            # outputs = np.round(self.knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        outputs[:,1] = -outputs[:,0]
         out["F"] = outputs
 
 def genetic_algorithm(mode, problem, pop_size, eliminate_duplicates=True):
