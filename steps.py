@@ -169,6 +169,9 @@ def make_mysql_configuration(knobs, results):
     f.write('[mysqld]\n')
     f.write('log-error = /var/log/mysqld.log\n')
     f.write('bind-address = 127.0.0.1\n')
-    f.close()
+    
     for idx, col in enumerate(knobs.columns):
-        logging.info(f'{col} : {np.round(results[idx]).astype(int)}')
+        f.write(f'{col} = {np.round(results[idx]).astype(int)}\n')
+        # logging.info(f'{col} : {np.round(results[idx]).astype(int)}')
+        
+    f.close()
