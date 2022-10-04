@@ -153,6 +153,10 @@ class MAML():
                     #                 y_eval=sample_val[num_wk][1].detach().cpu().numpy() )
 
                     tmp_model = TabNetRegressor()
+                    # tmp_model.__update__
+                    tmp_model.input_dim = X_train[0].shape[1]
+                    tmp_model.output_dim = y_train[0].shape[1]
+                    tmp_model._set_network()
                     # make tmp_model for inner loop step ################################
      
                     self.sample_tr = sample_tr[num_wk]
