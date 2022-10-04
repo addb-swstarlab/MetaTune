@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 
 import torch
+from pytorch_tabnet.tab_model import TabNetRegressor
+
 from torch.utils.data import TensorDataset, DataLoader
 
 
