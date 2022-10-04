@@ -145,12 +145,14 @@ class MAML():
                  
                 for num_wk in range(self.num_meta_tasks):
                     # make tmp_model for inner loop step ################################
-                    tmp_model = Set_tabnet_network(
-                                    m=Tabnet_architecture(),
-                                    x_train=sample_tr[num_wk][0].detach().cpu().numpy(),
-                                    y_train=sample_tr[num_wk][1].detach().cpu().numpy(),
-                                    x_eval=sample_val[num_wk][0].detach().cpu().numpy(),
-                                    y_eval=sample_val[num_wk][1].detach().cpu().numpy() )
+                    # tmp_model = Set_tabnet_network(
+                    #                 m=Tabnet_architecture(),
+                    #                 x_train=sample_tr[num_wk][0].detach().cpu().numpy(),
+                    #                 y_train=sample_tr[num_wk][1].detach().cpu().numpy(),
+                    #                 x_eval=sample_val[num_wk][0].detach().cpu().numpy(),
+                    #                 y_eval=sample_val[num_wk][1].detach().cpu().numpy() )
+
+                    tmp_model = TabNetRegressor()
                     # make tmp_model for inner loop step ################################
      
                     self.sample_tr = sample_tr[num_wk]
