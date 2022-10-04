@@ -26,7 +26,7 @@ from torchsummary import summary as summary
 from models.utils import *
 from pytorch_tabnet.tab_model import TabNetRegressor
 
-import utils
+from utils import Set_tabnet_network, Tabnet_architecture
 # interpreter : py3.8         
 
 class MAML_one_batch():
