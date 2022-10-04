@@ -194,3 +194,34 @@ def pretrain_dataset(entire_X_tr, entire_y_tr, entire_X_te, entire_y_te, scaler_
     s_test_y_te = torch.Tensor(scaler_y.transform(test_y_te)).cuda()
 
     return DL_tr, DL_te, s_test_X_te, s_test_y_te
+
+class Tabnet_architecture(TabNetRegressor):
+    def __init__(self):
+        super(Tabnet_architecture, self).__init__()
+
+    def fit(
+        self,
+        X_train,
+        y_train,
+        input_dim=10,
+        eval_set=None,
+        weights=0,
+        batch_size=1024,
+        virtual_batch_size=128,
+        drop_last=False
+    ):
+        self.virtual_batch_size = virtual_batch_size
+        self.drop_last = drop_last
+        self.input_dim = input_dim
+        self._stop_training = False
+
+        self.update_fit_params(
+            X_train,
+            y_train,
+            eval_set,
+            weights,
+        )
+
+        if not hasattr(self, "network"):
+            self._set_network()
+        self._update_network_params()
