@@ -144,7 +144,7 @@ class MAML():
                 sample_val = sampler_val.get_sample()   #############
                  
                 for num_wk in range(self.num_meta_tasks):
-                    # make tmp_model for inner loop step ################################
+                    ## make tmp_model for inner loop step ################################
                     # tmp_model = Set_tabnet_network(
                     #                 m=Tabnet_architecture(),
                     #                 x_train=sample_tr[num_wk][0].detach().cpu().numpy(),
@@ -157,7 +157,7 @@ class MAML():
                     tmp_model.input_dim = sample_tr[0][0].shape[1]  # dim of X
                     tmp_model.output_dim = sample_tr[0][1].shape[1] # dim of y
                     tmp_model._set_network()
-                    # make tmp_model for inner loop step ################################
+                    ## make tmp_model for inner loop step ################################
      
                     self.sample_tr = sample_tr[num_wk]
                     self.samle_val = sample_val[num_wk]  #########    
