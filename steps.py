@@ -61,19 +61,28 @@ def train_fitness_function(knobs, logger, opt):
 
     if opt.train_type == 'wmaml': 
 
+        
+
         logger.info(f"[Train MODE] 1st step of train model (wmaml)")
         data_mapping = []
         # origin_model = TabNetRegressor()    # if opt.mode == 'dnn': origin_model = SingleNet(@@@) ?
+
+        # make origin model ############################################################################
         origin_model = Set_tabnet_network(
                         m=Tabnet_architecture(),
                         x_train=knobs.norm_X_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
                         y_train=knobs.norm_em_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
                         x_eval=knobs.norm_X_dict['val'][opt.target][0:2].detach().cpu().numpy(),
                         y_eval=knobs.norm_em_dict['val'][opt.target][0:2].detach().cpu().numpy() )
+        # make origin model ############################################################################
 
-        wmaml = MAML_one_batch(origin_model, 
-                               knobs.norm_X_dict, knobs.norm_im_dict, knobs.norm_em_dict, 
-                               num_epochs=opt.epochs, inner_lr=opt.inner_lr, meta_lr=opt._lr)
+
+        # wmaml = MAML(origin_model, 
+        #                        knobs.norm_X_dict, knobs.norm_im_dict, knobs.norm_em_dict, 
+        #                        num_epochs=opt.epochs, inner_lr=opt.inner_lr, meta_lr=opt._lr)
+
+        wmaml = MAML(origin_model, datas=knobs, num_epochs=opt.epochs, inner_lr=opt.inner_lr, meta_lr=opt._lr)
+
         wmaml.main_loop()
              
         logger.info(f"[Train MODE] 2nd step of train model (adaptation)")
