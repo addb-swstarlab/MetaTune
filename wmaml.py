@@ -29,9 +29,11 @@ from pytorch_tabnet.tab_model import TabNetRegressor
 from utils import Set_tabnet_network, Tabnet_architecture
 # interpreter : py3.8         
 
-class MAML_one_batch():
+class MAML():
     # def __init__(self, model, train_dataloaders, val_dataloaders, test_dataloaders, num_epochs, inner_lr, meta_lr, inner_steps=1, dot=True, lamb=0.6):
     def __init__(self, model, train_dataloaders, val_dataloaders, test_dataloaders, num_epochs, inner_lr, meta_lr, inner_steps=1):
+    # def __init__(self, model, datas, num_epochs, inner_lr, meta_lr, inner_steps=1):
+
     
     # def __init__(self, model, train_dataloaders, test_dataloaders, meta_tasks, inner_lr, meta_lr, K=K, inner_steps=1):   # K : number of sample data of task
         
@@ -44,6 +46,11 @@ class MAML_one_batch():
         self.train_dataloaders = train_dataloaders
         self.val_dataloaders = val_dataloaders
         self.test_dataloaders = test_dataloaders
+        # self.datas = datas
+        # self.train_dataloaders = self.datas
+        # self.val_dataloaders = self.datas
+        # self.test_dataloaders = self.datas
+
 
         # hyperparameters
         self.num_epochs = num_epochs
@@ -109,9 +116,7 @@ class MAML_one_batch():
 
         # perform training on data sampled from task
         # X, y = self.sample_tr[0], self.sample_tr[1]
-        X_tr, y_tr = data_tr[0], data_tr[1]
-
-                
+        X_tr, y_tr = data_tr[0], data_tr[1]                
         tmp_model.fit(X_tr, y_tr)
 
         X_val, y_val = data_val[0], data_val[1]
@@ -140,19 +145,19 @@ class MAML_one_batch():
                  
                 for num_wk in range(self.num_meta_tasks):
                     # make tmp_model for inner loop step ################################
-                    self.tmp_model = Set_tabnet_network(
-                                m=Tabnet_architecture(),
-                                x_train=sample_tr[num_wk][0].detach().cpu().numpy(),
-                                y_train=sample_tr[num_wk][1].detach().cpu().numpy(),
-                                x_eval=sample_val[num_wk][0].detach().cpu().numpy(),
-                                y_eval=sample_val[num_wk][1].detach().cpu().numpy() )
+                    tmp_model = Set_tabnet_network(
+                                    m=Tabnet_architecture(),
+                                    x_train=sample_tr[num_wk][0].detach().cpu().numpy(),
+                                    y_train=sample_tr[num_wk][1].detach().cpu().numpy(),
+                                    x_eval=sample_val[num_wk][0].detach().cpu().numpy(),
+                                    y_eval=sample_val[num_wk][1].detach().cpu().numpy() )
                     # make tmp_model for inner loop step ################################
      
                     self.sample_tr = sample_tr[num_wk]
                     self.samle_val = sample_val[num_wk]  #########    
 
                     # inner loop
-                    meta_loss = self.inner_loop(self.sample_tr, self.samle_val)
+                    meta_loss = self.inner_loop(tmp_model, self.sample_tr, self.samle_val)
                     
                     wk_loss.append(meta_loss)
                     meta_loss_sum += meta_loss   # i: task                               
