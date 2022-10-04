@@ -14,41 +14,41 @@ from scipy.stats import gmean
 from sklearn.ensemble import RandomForestRegressor
 from ga import RocksDBSingleProblem, RocksDBMultiProblem, genetic_algorithm
 
-from models.wmaml import *
+from wmaml import *
 
-# def euclidean_distance(a, b):
-#     res = a - b
-#     res = res ** 2
-#     res = np.sqrt(res)
-#     return np.average(res)
+def euclidean_distance(a, b):
+    res = a - b
+    res = res ** 2
+    res = np.sqrt(res)
+    return np.average(res)
 
-# def get_euclidean_distance(internal_dict, logger, opt):
-#     scaler = MinMaxScaler().fit(pd.concat(internal_dict))
-#     target_config_idx = [1004,1214,1312,2465,3306,3333,4569,4801,5124,5389,8490,9131,9143,11896,12065,12293,12491,13098,18088,19052]
+def get_euclidean_distance(internal_dict, logger, opt):
+    scaler = MinMaxScaler().fit(pd.concat(internal_dict))
+    target_config_idx = [1004,1214,1312,2465,3306,3333,4569,4801,5124,5389,8490,9131,9143,11896,12065,12293,12491,13098,18088,19052]
     
-#     trg = opt.target
-#     if trg > 15:
-#         trg = 16
+    trg = opt.target
+    if trg > 15:
+        trg = 16
     
-#     wk = []
-#     # for im_d in internal_dict:
-#     #     wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
-#     for im_d in internal_dict:
-#         if im_d == 16:
-#             wk.append(scaler.transform(internal_dict[im_d]))
-#         else:
-#             wk.append(scaler.transform(internal_dict[im_d].iloc[target_config_idx, :]))
+    wk = []
+    # for im_d in internal_dict:
+    #     wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
+    for im_d in internal_dict:
+        if im_d == 16:
+            wk.append(scaler.transform(internal_dict[im_d]))
+        else:
+            wk.append(scaler.transform(internal_dict[im_d].iloc[target_config_idx, :]))
 
-#     big = 100
-#     for i in range(len(wk)):
-#         ed = euclidean_distance(wk[trg], wk[i])
-#         if ed<big and trg != i: 
-#             big=ed
-#             idx = i
-#         logger.info(f'{i:4}th   {ed:.5f}')
-#     logger.info(f'best similar workload is {idx}th')
+    big = 100
+    for i in range(len(wk)):
+        ed = euclidean_distance(wk[trg], wk[i])
+        if ed<big and trg != i: 
+            big=ed
+            idx = i
+        logger.info(f'{i:4}th   {ed:.5f}')
+    logger.info(f'best similar workload is {idx}th')
 
-#     return idx
+    return idx
 
 def train_fitness_function(knobs, logger, opt):
     if opt.mode == 'RF':
@@ -63,7 +63,14 @@ def train_fitness_function(knobs, logger, opt):
 
         logger.info(f"[Train MODE] 1st step of train model (wmaml)")
         data_mapping = []
-        origin_model = TabNetRegressor()    # if opt.mode == 'dnn': origin_model = SingleNet(@@@) ?
+        # origin_model = TabNetRegressor()    # if opt.mode == 'dnn': origin_model = SingleNet(@@@) ?
+        origin_model = Set_tabnet_network(
+                        m=Tabnet_architecture(),
+                        x_train=knobs.norm_X_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
+                        y_train=knobs.norm_em_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
+                        x_eval=knobs.norm_X_dict['val'][opt.target][0:2].detach().cpu().numpy(),
+                        y_eval=knobs.norm_em_dict['val'][opt.target][0:2].detach().cpu().numpy() )
+
         wmaml = MAML_one_batch(origin_model, 
                                knobs.norm_X_dict, knobs.norm_im_dict, knobs.norm_em_dict, 
                                num_epochs=opt.epochs, inner_lr=opt.inner_lr, meta_lr=opt._lr)
