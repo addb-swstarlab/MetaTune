@@ -154,8 +154,8 @@ class MAML():
 
                     tmp_model = TabNetRegressor()
                     # tmp_model.__update__
-                    tmp_model.input_dim = X_train[0].shape[1]
-                    tmp_model.output_dim = y_train[0].shape[1]
+                    tmp_model.input_dim = sample_tr[0][0].shape[1]  # dim of X
+                    tmp_model.output_dim = sample_tr[0][1].shape[1] # dim of y
                     tmp_model._set_network()
                     # make tmp_model for inner loop step ################################
      
