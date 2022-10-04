@@ -76,7 +76,12 @@ def train_fitness_function(knobs, logger, opt):
         #                 y_train=knobs.norm_em_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
         #                 x_eval=knobs.norm_X_dict['val'][opt.target][0:2].detach().cpu().numpy(),
         #                 y_eval=knobs.norm_em_dict['val'][opt.target][0:2].detach().cpu().numpy() )
-        origin_model = 
+        origin_model = TabNetRegressor()
+        model.input_dim = X_train[0].shape[1]
+        model.input_dim = train_dataloaders[0].shape[1]
+
+        model.output_dim = y_train[0].shape[1]
+        model._set_network()
         # make origin model ############################################################################
 
 
