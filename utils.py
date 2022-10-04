@@ -227,3 +227,21 @@ class Tabnet_architecture(TabNetRegressor):
         if not hasattr(self, "network"):
             self._set_network()
         self._update_network_params()
+
+class Set_tabnet_network(nn.Module):
+    def __init__(self, m, x_train, y_train, x_eval, y_eval):
+        super(Set_tabnet_network, self).__init__()
+        self.x_train = x_train
+        self.y_train = y_train
+        self.x_eval = x_eval
+        self.y_eval = y_eval
+        self.set_network(m)
+
+    def set_network(self, m):
+        m.fit(self.x_train, self.y_train, eval_set=[(self.x_eval, self.y_eval)])
+        # m.fit(knobs.norm_X_dict['tr'][0].detach().cpu().numpy(), knobs.norm_em_dict['tr'][0].detach().cpu().numpy(), 
+        #                eval_set=[(knobs.norm_X_dict['val'][0].detach().cpu().numpy(), knobs.norm_em_dict['val'][0].detach().cpu().numpy())])
+        self.model = m.network
+
+    def forward(self, x):
+        return self.model(x)
