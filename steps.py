@@ -61,19 +61,22 @@ def train_fitness_function(knobs, logger, opt):
 
     if opt.train_type == 'wmaml': 
 
+        dataset_tr = 
         
+
 
         logger.info(f"[Train MODE] 1st step of train model (wmaml)")
         data_mapping = []
         # origin_model = TabNetRegressor()    # if opt.mode == 'dnn': origin_model = SingleNet(@@@) ?
 
         # make origin model ############################################################################
-        origin_model = Set_tabnet_network(
-                        m=Tabnet_architecture(),
-                        x_train=knobs.norm_X_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
-                        y_train=knobs.norm_em_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
-                        x_eval=knobs.norm_X_dict['val'][opt.target][0:2].detach().cpu().numpy(),
-                        y_eval=knobs.norm_em_dict['val'][opt.target][0:2].detach().cpu().numpy() )
+        # origin_model = Set_tabnet_network(
+        #                 m=Tabnet_architecture(),
+        #                 x_train=knobs.norm_X_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
+        #                 y_train=knobs.norm_em_dict['tr'][opt.target][0:2].detach().cpu().numpy(),
+        #                 x_eval=knobs.norm_X_dict['val'][opt.target][0:2].detach().cpu().numpy(),
+        #                 y_eval=knobs.norm_em_dict['val'][opt.target][0:2].detach().cpu().numpy() )
+        origin_model = 
         # make origin model ############################################################################
 
 
