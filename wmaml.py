@@ -55,14 +55,16 @@ class MAML_one_batch():
         # self.meta_tasks = meta_tasks    # list of using workload number for MAML
         self.num_meta_tasks = len(self.train_dataloaders)    # len(train_dataloaders) = len(test_dataloaders) 
         self.criterion = nn.MSELoss()
-        self.weights = list(self.model.parameters()) # the maml weights we will be meta-optimising
+        # self.weights = list(self.model.parameters()) # the maml weights we will be meta-optimising
+
         # ######################################################
         # # self.weights = list(torch.nn.init.xavier_uniform_(self.model.parameters())) # the maml weights we will be meta-optimising
         # self.weights = list(self.model.parameters()) # the maml weights we will be meta-optimising
         # for i in range(len(self.weights)):
         #     self.weights[i]=torch.nn.init.kaiming_normal_(self.weights[i])
         # ######################################################
-        self.meta_optimizer = torch.optim.Adam(self.weights, self.meta_lr)
+        # self.meta_optimizer = torch.optim.Adam(self.weights, self.meta_lr)
+        self.meta_optimizer = torch.optim.Adam(self.model.parameters(), self.meta_lr)
         
         # self.K = K
         self.inner_steps = inner_steps # with the current design of MAML, >1 is unlikely to work well         
@@ -98,12 +100,12 @@ class MAML_one_batch():
     #     return inner_loss, meta_loss
 
     # def inner_loop(self, model, iter):     # i: task , iteration : iteration
-    def inner_loop(self, model, data_tr, data_val):     # i: task , iteration : iteration
+    def inner_loop(self, tmp_model, data_tr, data_val):     # i: task , iteration : iteration
         # reset inner model to current maml weights
 
         # define tmp_model for wmaml (copy original model)
-        tmp_model = TabNetRegressor()
-        tmp_model.load_state_dict(model.state_dict())   # copy weight of origin model
+        # tmp_model = TabNetRegressor()
+        tmp_model.load_state_dict(self.model.state_dict())   # copy weight of origin model
 
         # perform training on data sampled from task
         # X, y = self.sample_tr[0], self.sample_tr[1]
@@ -115,7 +117,7 @@ class MAML_one_batch():
         X_val, y_val = data_val[0], data_val[1]
         y_val_pred = tmp_model.predict(X_val)
 
-        meta_loss = tmp_model.loss_fn(y_val, y_val_pred)
+        meta_loss = tmp_model.loss_fn(y_val, y_val_pred)    # 수정 필요
         
         return meta_loss
     
@@ -147,8 +149,11 @@ class MAML_one_batch():
                     # make tmp_model for inner loop step ################################
      
                     self.sample_tr = sample_tr[num_wk]
-                    self.samle_val = sample_val[num_wk]  #########       
+                    self.samle_val = sample_val[num_wk]  #########    
+
+                    # inner loop
                     meta_loss = self.inner_loop(self.sample_tr, self.samle_val)
+                    
                     wk_loss.append(meta_loss)
                     meta_loss_sum += meta_loss   # i: task                               
                 # print(f'meta_loss_sum : {meta_loss_sum}')   ####
@@ -222,21 +227,23 @@ class MAML_one_batch():
             for wk_valid_loader in self.test_dataloaders:
                 for data, target in wk_valid_loader:
                     output = model(data)
-                    if self.dot:
-                        d = torch.bmm(model.res_x, model.res_x.transpose(1, 2))
-                        dot_loss = F.mse_loss(d, torch.eye(d.size(1)).repeat(data.shape[0], 1, 1).cuda())
-                        loss = (1-self.lamb)*F.mse_loss(output, target) + self.lamb*dot_loss
-                    else:
-                        dot_loss = 0
-                        loss = F.mse_loss(output, target)
+                    # if self.dot:
+                    #     d = torch.bmm(model.res_x, model.res_x.transpose(1, 2))
+                    #     dot_loss = F.mse_loss(d, torch.eye(d.size(1)).repeat(data.shape[0], 1, 1).cuda())
+                    #     loss = (1-self.lamb)*F.mse_loss(output, target) + self.lamb*dot_loss
+                    # else:
+                    #     dot_loss = 0
+                    #     loss = F.mse_loss(output, target)
+
+                    loss = F.mse_loss(output, target)
                     true = target.cpu().detach().numpy().squeeze()
                     pred = output.cpu().detach().numpy().squeeze()
                     r2_res += r2_score(true, pred)
                     total_loss += loss.item()
-                    total_dot_loss += dot_loss.item()
+                    # total_dot_loss += dot_loss.item()
                     outputs = torch.cat((outputs, output))
         total_loss /= len(wk_valid_loader) * len(self.test_dataloaders)
-        total_dot_loss /= len(wk_valid_loader) * len(self.test_dataloaders)
+        # total_dot_loss /= len(wk_valid_loader) * len(self.test_dataloaders)
         r2_res /= len(wk_valid_loader) * len(self.test_dataloaders)
 
         return total_loss, outputs, r2_res
