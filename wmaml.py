@@ -132,11 +132,17 @@ class MAML_one_batch():
                 total_meta_loss_tr = 0
                 meta_loss_sum = 0
                 wk_loss =[]    
-                
-                sample_tr = sampler_tr.get_sample()
+
+                sample_tr = sampler_tr.get_sample() # get sample for each metatask data [[], [], [], ...]
                 sample_val = sampler_val.get_sample()   #############
                  
                 for num_wk in range(self.num_meta_tasks):
+                    self.tmp_model = Set_tabnet_network(
+                                m=Tabnet_architecture(),
+                                x_train=sample_tr[num_wk][0].detach().cpu().numpy(),
+                                y_train=sample_tr[num_wk][1].detach().cpu().numpy(),
+                                x_eval=sample_val[num_wk][0].detach().cpu().numpy(),
+                                y_eval=sample_val[num_wk][1].detach().cpu().numpy() )
                     # self.sample_tr = sample_tr[num_wk]
                     # self.samle_val = sample_val[num_wk]  #########            
                     self.sample_tr = sample_tr[num_wk]
