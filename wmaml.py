@@ -137,14 +137,15 @@ class MAML_one_batch():
                 sample_val = sampler_val.get_sample()   #############
                  
                 for num_wk in range(self.num_meta_tasks):
+                    # make tmp_model for inner loop step ################################
                     self.tmp_model = Set_tabnet_network(
                                 m=Tabnet_architecture(),
                                 x_train=sample_tr[num_wk][0].detach().cpu().numpy(),
                                 y_train=sample_tr[num_wk][1].detach().cpu().numpy(),
                                 x_eval=sample_val[num_wk][0].detach().cpu().numpy(),
                                 y_eval=sample_val[num_wk][1].detach().cpu().numpy() )
-                    # self.sample_tr = sample_tr[num_wk]
-                    # self.samle_val = sample_val[num_wk]  #########            
+                    # make tmp_model for inner loop step ################################
+     
                     self.sample_tr = sample_tr[num_wk]
                     self.samle_val = sample_val[num_wk]  #########       
                     meta_loss = self.inner_loop(self.sample_tr, self.samle_val)
