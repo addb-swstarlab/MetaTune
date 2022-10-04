@@ -129,10 +129,10 @@ class MAML():
 
     def main_loop(self):
 
-        model.input_dim = X_train[0].shape[1]
-        model.output_dim = y_train[0].shape[1]
-        model._set_network()
-        
+        self.model.input_dim = X_train[0].shape[1]
+        self.model.output_dim = y_train[0].shape[1]
+        self.model._set_network()
+
         # epoch_loss = 0 ####
         trigger_times = 0
         breaker = False ####
