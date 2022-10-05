@@ -130,19 +130,23 @@ class TaNetRegressorMAML(TabNetRegressor):
             weights,
         )
 
-        # Validate and reformat eval set depending on training data
+        # Validate and reformat eval set depending on target training data
         eval_names, eval_set = validate_eval_set(eval_set, eval_name, X_train, y_train)
 
 
+
+        _maml_construct_loaders
 
         train_dataloader, valid_dataloaders = self._construct_loaders(
             X_train, y_train, eval_set
         )
 
         ############################################################
-        maml_train_dataloader, maml_valid_dataloaders = self._construct_loaders(
-            X_train, y_train, eval_set
+        maml_train_dataloader, maml_valid_dataloaders = self.self._maml_construct_loaders(
+            X_train_maml, y_train_maml, eval_set_maml
         )
+
+        
         ############################################################
 
         if from_unsupervised is not None:
@@ -431,7 +435,7 @@ class TaNetRegressorMAML(TabNetRegressor):
             List of validation dataloaders.
 
         train_dataloader_list : list of train_dataloaders per meta-task
-        valid_dataloaders : list of valid_dataloaders per meta-task
+        valid_dataloader_list : list of valid_dataloaders per meta-task
         """
         train_dataloader_list = []
         valid_dataloaders_list = []
