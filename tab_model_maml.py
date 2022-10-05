@@ -160,7 +160,13 @@ class TaNetRegressorMAML(TabNetRegressor):
             # Call method on_epoch_begin for all callbacks
             self._callback_container.on_epoch_begin(epoch_idx)
 
-            self._train_epoch(train_dataloader)
+            # self._train_epoch(train_dataloader)
+            # If maml=True use self._train_epoch_maml
+            if self.maml==True:
+                self._train_epoch_maml(train_dataloader)
+            else:
+                self._train_epoch(train_dataloader)
+
 
             # Apply predict epoch to all eval sets
             for eval_name, valid_dataloader in zip(eval_names, valid_dataloaders):
