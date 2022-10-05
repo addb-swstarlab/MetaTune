@@ -130,17 +130,16 @@ class TaNetRegressorMAML(TabNetRegressor):
             weights,
         )
 
-        # Validate and reformat eval set depending on target training data
+        ## For target : Validate and reformat eval set depending on target training data
         eval_names, eval_set = validate_eval_set(eval_set, eval_name, X_train, y_train)
 
-
-
-        _maml_construct_loaders
 
         train_dataloader, valid_dataloaders = self._construct_loaders(
             X_train, y_train, eval_set
         )
 
+
+        ## For maml
         ############################################################
         maml_train_dataloader, maml_valid_dataloaders = self.self._maml_construct_loaders(
             X_train_maml, y_train_maml, eval_set_maml
