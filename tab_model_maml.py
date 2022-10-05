@@ -431,7 +431,8 @@ class TaNetRegressorMAML(TabNetRegressor):
             List of validation dataloaders.
 
         """
-        
+        train_dataloader_list = []
+        valid_dataloaders_list = []
         for i in range(len(X_train_maml)):
             X_train = X_train_maml[i]
             y_train = y_train_maml[i]
@@ -451,7 +452,8 @@ class TaNetRegressorMAML(TabNetRegressor):
                 self.drop_last,
                 self.pin_memory,
             )
-
+            train_dataloader_list.append(train_dataloader)
+            valid_dataloaders_list.append(valid_dataloaders)
         return train_dataloader, valid_dataloaders
         pass
         
