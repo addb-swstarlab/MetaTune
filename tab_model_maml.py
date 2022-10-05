@@ -262,6 +262,36 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         return batch_logs
 
+    def _predict_epoch(self, name, loader):
+        """
+        Predict an epoch and update metrics.
+
+        Parameters
+        ----------
+        name : str
+            Name of the validation set
+        loader : torch.utils.data.Dataloader
+                DataLoader with validation set
+        """
+        # Setting network on evaluation mode
+        self.network.eval()
+
+        list_y_true = []
+        list_y_score = []
+
+        # Main loop
+        for batch_idx, (X, y) in enumerate(loader):
+            scores = self._predict_batch(X)
+            list_y_true.append(y)
+            list_y_score.append(scores)
+
+        y_true, scores = self.stack_batches(list_y_true, list_y_score)
+
+        metrics_logs = self._metric_container_dict[name](y_true, scores)
+        self.network.train()
+        self.history.epoch_metrics.update(metrics_logs)
+        return
+
 # class TabNetRegressor(TabModel):
 #     def __post_init__(self):
 #         super(TabNetRegressor, self).__post_init__()
