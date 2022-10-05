@@ -404,6 +404,10 @@ class TaNetRegressorMAML(TabNetRegressor):
         return train_dataloader, valid_dataloaders
     '''
 
+    def _maml_construct_loaders(self, X_train, y_train, eval_set):
+        pass
+        
+
     def _construct_loaders(self, X_train, y_train, eval_set):
         """Generate dataloaders for train and eval set.
 
