@@ -409,6 +409,42 @@ class TaNetRegressorMAML(TabNetRegressor):
     '''
 
     def _construct_loaders(self, X_train, y_train, eval_set):
+        """Generate dataloaders for train and eval set.
+
+        Parameters
+        ----------
+        X_train : np.array
+            Train set.
+        y_train : np.array
+            Train targets.
+        eval_set : list of tuple
+            List of eval tuple set (X, y).
+
+        Returns
+        -------
+        train_dataloader : `torch.utils.data.Dataloader`
+            Training dataloader.
+        valid_dataloaders : list of `torch.utils.data.Dataloader`
+            List of validation dataloaders.
+
+        """
+        # all weights are not allowed for this type of model
+        y_train_mapped = self.prepare_target(y_train)
+        for i, (X, y) in enumerate(eval_set):
+            y_mapped = self.prepare_target(y)
+            eval_set[i] = (X, y_mapped)
+
+        train_dataloader, valid_dataloaders = create_dataloaders(
+            X_train,
+            y_train_mapped,
+            eval_set,
+            self.updated_weights,
+            self.batch_size,
+            self.num_workers,
+            self.drop_last,
+            self.pin_memory,
+        )
+        return train_dataloader, valid_dataloaders
     
     # def fit(
     #     self,
@@ -798,39 +834,39 @@ class TaNetRegressorMAML(TabNetRegressor):
     # '''
 
     # def _construct_loaders(self, X_train, y_train, eval_set):
-        """Generate dataloaders for train and eval set.
+        # """Generate dataloaders for train and eval set.
 
-        Parameters
-        ----------
-        X_train : np.array
-            Train set.
-        y_train : np.array
-            Train targets.
-        eval_set : list of tuple
-            List of eval tuple set (X, y).
+        # Parameters
+        # ----------
+        # X_train : np.array
+        #     Train set.
+        # y_train : np.array
+        #     Train targets.
+        # eval_set : list of tuple
+        #     List of eval tuple set (X, y).
 
-        Returns
-        -------
-        train_dataloader : `torch.utils.data.Dataloader`
-            Training dataloader.
-        valid_dataloaders : list of `torch.utils.data.Dataloader`
-            List of validation dataloaders.
+        # Returns
+        # -------
+        # train_dataloader : `torch.utils.data.Dataloader`
+        #     Training dataloader.
+        # valid_dataloaders : list of `torch.utils.data.Dataloader`
+        #     List of validation dataloaders.
 
-        """
-        # all weights are not allowed for this type of model
-        y_train_mapped = self.prepare_target(y_train)
-        for i, (X, y) in enumerate(eval_set):
-            y_mapped = self.prepare_target(y)
-            eval_set[i] = (X, y_mapped)
+        # """
+        # # all weights are not allowed for this type of model
+        # y_train_mapped = self.prepare_target(y_train)
+        # for i, (X, y) in enumerate(eval_set):
+        #     y_mapped = self.prepare_target(y)
+        #     eval_set[i] = (X, y_mapped)
 
-        train_dataloader, valid_dataloaders = create_dataloaders(
-            X_train,
-            y_train_mapped,
-            eval_set,
-            self.updated_weights,
-            self.batch_size,
-            self.num_workers,
-            self.drop_last,
-            self.pin_memory,
-        )
-        return train_dataloader, valid_dataloaders
+        # train_dataloader, valid_dataloaders = create_dataloaders(
+        #     X_train,
+        #     y_train_mapped,
+        #     eval_set,
+        #     self.updated_weights,
+        #     self.batch_size,
+        #     self.num_workers,
+        #     self.drop_last,
+        #     self.pin_memory,
+        # )
+        # return train_dataloader, valid_dataloaders
