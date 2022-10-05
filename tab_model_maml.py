@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from pytorch_tabnet.utils import PredictDataset, filter_weights
 from pytorch_tabnet.abstract_model import TabModel
+from pytorch_tabnet.tab_model import TabNetRegressor
 from torch.utils.data import DataLoader
 
 
