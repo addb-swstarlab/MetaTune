@@ -292,6 +292,31 @@ class TaNetRegressorMAML(TabNetRegressor):
         self.history.epoch_metrics.update(metrics_logs)
         return
 
+    def _predict_batch(self, X):
+        """
+        Predict one batch of data.
+
+        Parameters
+        ----------
+        X : torch.Tensor
+            Owned products
+
+        Returns
+        -------
+        np.array
+            model scores
+        """
+        X = X.to(self.device).float()
+
+        # compute model output
+        scores, _ = self.network(X)
+
+        if isinstance(scores, list):
+            scores = [x.cpu().detach().numpy() for x in scores]
+        else:
+            scores = scores.cpu().detach().numpy()
+
+        return scores
 # class TabNetRegressor(TabModel):
 #     def __post_init__(self):
 #         super(TabNetRegressor, self).__post_init__()
