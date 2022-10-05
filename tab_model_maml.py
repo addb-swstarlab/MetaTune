@@ -10,7 +10,7 @@ import warnings
 class TaNetRegressorMAML(TabNetRegressor):
     def __post_init__(self):
         return super(TaNetRegressorMAML).__post_init__()
-        
+    # add maml variable maml=False
     def fit(
         self,
         X_train,
@@ -31,6 +31,7 @@ class TaNetRegressorMAML(TabNetRegressor):
         from_unsupervised=None,
         warm_start=False,
         augmentations=None,
+
     ):
         """Train a neural network stored in self.network
         Using train_dataloader for training data and
