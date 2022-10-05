@@ -412,13 +412,13 @@ class TaNetRegressorMAML(TabNetRegressor):
 
     def _maml_construct_loaders(self, X_train_maml, y_train_maml, eval_set_maml):
 
-        """Generate dataloaders for train and eval set.
+        """Generate dataloaders for maml train and eval set.
 
         Parameters
         ----------
-        X_train : np.array
+        X_train_maml : dictionary 
             Train set.
-        y_train : np.array
+        y_train_maml : np.array
             Train targets.
         eval_set : list of tuple
             List of eval tuple set (X, y).
@@ -431,6 +431,27 @@ class TaNetRegressorMAML(TabNetRegressor):
             List of validation dataloaders.
 
         """
+        for i in range(len(X_train_maml)):
+            X_train = 
+            y_train = 
+            eval_set = 
+            y_train_mapped = self.prepare_target(y_train)
+            for i, (X, y) in enumerate(eval_set):
+                y_mapped = self.prepare_target(y)
+                eval_set[i] = (X, y_mapped)
+
+            train_dataloader, valid_dataloaders = create_dataloaders(
+                X_train,
+                y_train_mapped,
+                eval_set,
+                self.updated_weights,
+                self.batch_size,
+                self.num_workers,
+                self.drop_last,
+                self.pin_memory,
+            )
+
+        return train_dataloader, valid_dataloaders
         pass
         
 
