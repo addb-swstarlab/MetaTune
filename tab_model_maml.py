@@ -139,6 +139,12 @@ class TaNetRegressorMAML(TabNetRegressor):
             X_train, y_train, eval_set
         )
 
+        ############################################################
+        maml_train_dataloader, maml_valid_dataloaders = self._construct_loaders(
+            X_train, y_train, eval_set
+        )
+        ############################################################
+
         if from_unsupervised is not None:
             # Update parameters to match self pretraining
             self.__update__(**from_unsupervised.get_params())
@@ -163,7 +169,7 @@ class TaNetRegressorMAML(TabNetRegressor):
             # Call method on_epoch_begin for all callbacks
             self._callback_container.on_epoch_begin(epoch_idx)
 
-            self._train_epoch_maml(train_dataloader)
+            self._train_epoch_maml(maml_train_dataloader)#################
 
 
             # Apply predict epoch to all eval sets
@@ -405,6 +411,25 @@ class TaNetRegressorMAML(TabNetRegressor):
     '''
 
     def _maml_construct_loaders(self, X_train, y_train, eval_set):
+        """Generate dataloaders for train and eval set.
+
+        Parameters
+        ----------
+        X_train : np.array
+            Train set.
+        y_train : np.array
+            Train targets.
+        eval_set : list of tuple
+            List of eval tuple set (X, y).
+
+        Returns
+        -------
+        train_dataloader : `torch.utils.data.Dataloader`
+            Training dataloader.
+        valid_dataloaders : list of `torch.utils.data.Dataloader`
+            List of validation dataloaders.
+
+        """
         pass
         
 
