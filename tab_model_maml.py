@@ -431,10 +431,11 @@ class TaNetRegressorMAML(TabNetRegressor):
             List of validation dataloaders.
 
         """
+        
         for i in range(len(X_train_maml)):
-            X_train = 
-            y_train = 
-            eval_set = 
+            X_train = X_train_maml[i]
+            y_train = y_train_maml[i]
+            eval_set = eval_set_maml[i]
             y_train_mapped = self.prepare_target(y_train)
             for i, (X, y) in enumerate(eval_set):
                 y_mapped = self.prepare_target(y)
