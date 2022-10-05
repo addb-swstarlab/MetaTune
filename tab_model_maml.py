@@ -240,7 +240,7 @@ class TaNetRegressorMAML(TabNetRegressor):
         for batch_idx, (X, y) in enumerate(train_loader):
             self._callback_container.on_batch_begin(batch_idx)
             
-            batch_logs = self._train_batch(X, y)
+            batch_logs = self._train_batch_maml(X, y)
 
             self._callback_container.on_batch_end(batch_idx, batch_logs)
 
@@ -249,9 +249,9 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         return
 
-    def _train_batch(self, X, y):
+    def _train_batch_maml(self, X, y):
         """
-        Trains one batch of data
+        Trains one batch of meta datas (meta-learning)
 
         Parameters
         ----------
@@ -275,10 +275,21 @@ class TaNetRegressorMAML(TabNetRegressor):
         if self.augmentations is not None:
             X, y = self.augmentations(X, y)
 
-        for param in self.network.parameters():
+        # for param in self.network.parameters():
+        #     param.grad = None
+
+        # output, M_loss = self.network(X)
+
+        # make tmp_model for meta-learning train
+        tmp_model = TabNetRegressor()
+        tmp_model.input_dim = X.shape[1]
+        tmp_model.output_dim = y.shape[1]
+        tmp_model._set_network()
+
+        for param in tmp_model.network.parameters():
             param.grad = None
 
-        output, M_loss = self.network(X)
+        output, M_loss = tmp_model.network(X)
 
         loss = self.compute_loss(output, y)
         # Add the overall sparsity loss
