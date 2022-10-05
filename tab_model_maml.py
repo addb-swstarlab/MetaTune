@@ -19,7 +19,7 @@ from pytorch_tabnet.utils import (
 
 class TaNetRegressorMAML(TabNetRegressor):
     def __post_init__(self):
-        return super(TaNetRegressorMAML, self).__post_init__()
+        super(TaNetRegressorMAML, self).__post_init__()
     # add maml variable maml=False
     def maml_fit(
         self,
