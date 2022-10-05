@@ -5,6 +5,10 @@ from pytorch_tabnet.abstract_model import TabModel
 from torch.utils.data import DataLoader
 
 
+class TaNetRegressorMAML(TabNetRegressor):
+        pass
+
+
 class TabNetRegressor(TabModel):
     def __post_init__(self):
         super(TabNetRegressor, self).__post_init__()
