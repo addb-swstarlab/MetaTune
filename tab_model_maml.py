@@ -21,10 +21,17 @@ class TaNetRegressorMAML(TabNetRegressor):
     def __post_init__(self):
         return super(TaNetRegressorMAML, self).__post_init__()
     # add maml variable maml=False
-    def fit(
+    def maml_fit(
         self,
         X_train,
         y_train,
+
+        ## Dataset for maml#########
+        X_train_maml,
+        y_train_maml,   
+        eval_set_maml=None,     
+        ## Dataset for maml#########
+
         eval_set=None,
         eval_name=None,
         eval_metric=None,
@@ -96,14 +103,7 @@ class TaNetRegressorMAML(TabNetRegressor):
         self.virtual_batch_size = virtual_batch_size
         self.num_workers = num_workers
         self.drop_last = drop_last      
-        # self.input_dim = X_train.shape[1]
-
-        # If maml=True self.input_dim is X_train[0].sape[1] ( X_train is list of workload X_train )
-        if self.maml==True:
-            self.input_dim = X_train[0].shape[1]    # ( X_train is list of workload X_train )
-        else:
-            self.input_dim = X_train.shape[1]
-
+        self.input_dim = X_train.shape[1]
         self._stop_training = False
         self.pin_memory = pin_memory and (self.device.type != "cpu")
         self.augmentations = augmentations
