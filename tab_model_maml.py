@@ -85,8 +85,15 @@ class TaNetRegressorMAML(TabNetRegressor):
         self.batch_size = batch_size
         self.virtual_batch_size = virtual_batch_size
         self.num_workers = num_workers
-        self.drop_last = drop_last
-        self.input_dim = X_train.shape[1]
+        self.drop_last = drop_last      
+        # self.input_dim = X_train.shape[1]
+
+        # If maml=True self.input_dim is X_train[0].sape[1] ( X_train is list of workload X_train )
+        if self.maml==True:
+            self.input_dim = X_train[0].shape[1]    # ( X_train is list of workload X_train )
+        else:
+            self.input_dim = X_train.shape[1]
+
         self._stop_training = False
         self.pin_memory = pin_memory and (self.device.type != "cpu")
         self.augmentations = augmentations
