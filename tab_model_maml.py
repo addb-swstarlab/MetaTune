@@ -217,6 +217,51 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         return
 
+    def _train_batch(self, X, y):
+        """
+        Trains one batch of data
+
+        Parameters
+        ----------
+        X : torch.Tensor
+            Train matrix
+        y : torch.Tensor
+            Target matrix
+
+        Returns
+        -------
+        batch_outs : dict
+            Dictionnary with "y": target and "score": prediction scores.
+        batch_logs : dict
+            Dictionnary with "batch_size" and "loss".
+        """
+        batch_logs = {"batch_size": X.shape[0]}
+
+        X = X.to(self.device).float()
+        y = y.to(self.device).float()
+
+        if self.augmentations is not None:
+            X, y = self.augmentations(X, y)
+
+        for param in self.network.parameters():
+            param.grad = None
+
+        output, M_loss = self.network(X)
+
+        loss = self.compute_loss(output, y)
+        # Add the overall sparsity loss
+        loss = loss - self.lambda_sparse * M_loss
+
+        # Perform backward pass and optimization
+        loss.backward()
+        if self.clip_value:
+            clip_grad_norm_(self.network.parameters(), self.clip_value)
+        self._optimizer.step()
+
+        batch_logs["loss"] = loss.cpu().detach().numpy().item()
+
+        return batch_logs
+
 # class TabNetRegressor(TabModel):
 #     def __post_init__(self):
 #         super(TabNetRegressor, self).__post_init__()
