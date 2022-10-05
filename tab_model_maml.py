@@ -269,22 +269,23 @@ class TaNetRegressorMAML(TabNetRegressor):
         """
         batch_logs = {"batch_size": X.shape[0]}
 
+        # make tmp_model for meta-learning train
+        tmp_model = TabNetRegressor()
+        tmp_model.input_dim = X.shape[1]
+        tmp_model.output_dim = y.shape[1]
+        tmp_model._set_network()
+
         X = X.to(self.device).float()
         y = y.to(self.device).float()
 
         if self.augmentations is not None:
             X, y = self.augmentations(X, y)
 
-        # for param in self.network.parameters():
-        #     param.grad = None
-
-        # output, M_loss = self.network(X)
-
-        # make tmp_model for meta-learning train
-        tmp_model = TabNetRegressor()
-        tmp_model.input_dim = X.shape[1]
-        tmp_model.output_dim = y.shape[1]
-        tmp_model._set_network()
+        # # make tmp_model for meta-learning train
+        # tmp_model = TabNetRegressor()
+        # tmp_model.input_dim = X.shape[1]
+        # tmp_model.output_dim = y.shape[1]
+        # tmp_model._set_network()
 
         for param in tmp_model.network.parameters():
             param.grad = None
