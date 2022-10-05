@@ -1,11 +1,21 @@
 import torch
 import numpy as np
 from pytorch_tabnet.utils import PredictDataset, filter_weights
-from pytorch_tabnet.abstract_model import TabModel
 from pytorch_tabnet.tab_model import TabNetRegressor
 from torch.utils.data import DataLoader
 import warnings
 
+from pytorch_tabnet.abstract_model import TabModel
+from pytorch_tabnet.utils import (
+    PredictDataset,
+    create_explain_matrix,
+    validate_eval_set,
+    create_dataloaders,
+    define_device,
+    ComplexEncoder,
+    check_input,
+    check_warm_start
+)
 
 class TaNetRegressorMAML(TabNetRegressor):
     def __post_init__(self):
