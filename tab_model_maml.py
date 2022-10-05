@@ -275,6 +275,9 @@ class TaNetRegressorMAML(TabNetRegressor):
         tmp_model.output_dim = y.shape[1]
         tmp_model._set_network()
 
+        # train mode -- self.network
+        tmp_model.network.train()
+
         X = X.to(self.device).float()
         y = y.to(self.device).float()
 
