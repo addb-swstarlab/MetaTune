@@ -166,7 +166,7 @@ class TaNetRegressorMAML(TabNetRegressor):
         # Call method on_train_begin for all callbacks
         self._callback_container.on_train_begin()
 
-        # Training loop over epochs
+        # Training loop over epochs ##########################################################################
         for epoch_idx in range(self.max_epochs):
 
             # Call method on_epoch_begin for all callbacks
