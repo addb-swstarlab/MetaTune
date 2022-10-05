@@ -456,7 +456,7 @@ class TaNetRegressorMAML(TabNetRegressor):
             )
             train_dataloader_list.append(train_dataloader)
             valid_dataloaders_list.append(valid_dataloaders)
-        return train_dataloader, valid_dataloaders
+        return train_dataloader_list, valid_dataloaders_list
 
 
     def _construct_loaders(self, X_train, y_train, eval_set):
