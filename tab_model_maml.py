@@ -193,6 +193,30 @@ class TaNetRegressorMAML(TabNetRegressor):
         res = np.vstack(results)
         return self.predict_func(res)
 
+
+    def _train_epoch(self, train_loader):
+        """
+        Trains one epoch of the network in self.network
+
+        Parameters
+        ----------
+        train_loader : a :class: `torch.utils.data.Dataloader`
+            DataLoader with train set
+        """
+        self.network.train()
+
+        for batch_idx, (X, y) in enumerate(train_loader):
+            self._callback_container.on_batch_begin(batch_idx)
+
+            batch_logs = self._train_batch(X, y)
+
+            self._callback_container.on_batch_end(batch_idx, batch_logs)
+
+        epoch_logs = {"lr": self._optimizer.param_groups[-1]["lr"]}
+        self.history.epoch_metrics.update(epoch_logs)
+
+        return
+
 # class TabNetRegressor(TabModel):
 #     def __post_init__(self):
 #         super(TabNetRegressor, self).__post_init__()
