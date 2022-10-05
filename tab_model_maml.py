@@ -430,6 +430,8 @@ class TaNetRegressorMAML(TabNetRegressor):
         valid_dataloaders : list of `torch.utils.data.Dataloader`
             List of validation dataloaders.
 
+        train_dataloader_list : list of train_dataloaders per meta-task
+        valid_dataloaders : list of valid_dataloaders per meta-task
         """
         train_dataloader_list = []
         valid_dataloaders_list = []
@@ -455,8 +457,7 @@ class TaNetRegressorMAML(TabNetRegressor):
             train_dataloader_list.append(train_dataloader)
             valid_dataloaders_list.append(valid_dataloaders)
         return train_dataloader, valid_dataloaders
-        pass
-        
+
 
     def _construct_loaders(self, X_train, y_train, eval_set):
         """Generate dataloaders for train and eval set.
