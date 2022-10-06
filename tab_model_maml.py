@@ -143,7 +143,7 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         ## For maml
         ############################################################
-        maml_train_dataloader_list, maml_valid_dataloader_list = self.self._maml_construct_loaders(
+        maml_train_dataloader_list, maml_valid_dataloaders_list = self.self._maml_construct_loaders(
             X_train_maml, y_train_maml, eval_set_maml
         )
 
@@ -174,7 +174,19 @@ class TaNetRegressorMAML(TabNetRegressor):
             # Call method on_epoch_begin for all callbacks
             self._callback_container.on_epoch_begin(epoch_idx)
 
-            self._train_epoch_maml(maml_train_dataloader)#################
+            # self._train_epoch_maml(maml_train_dataloader_list)#################
+
+            self.network.train()
+            
+            for batch_idx, (X, y) in enumerate(maml_train_dataloader_list):
+                self._callback_container.on_batch_begin(batch_idx)
+                for i in range(len(maml_train_dataloader_list)):
+                    batch_logs = self._train_batch_maml(X, y)
+
+                self._callback_container.on_batch_end(batch_idx, batch_logs)
+
+            epoch_logs = {"lr": self._optimizer.param_groups[-1]["lr"]}
+            self.history.epoch_metrics.update(epoch_logs)
 
 
             # Apply predict epoch to all eval sets #################################
@@ -226,30 +238,30 @@ class TaNetRegressorMAML(TabNetRegressor):
         res = np.vstack(results)
         return self.predict_func(res)
 
-    def _train_epoch_maml(self, maml_train_dataloader):
-        """
-        [For maml train]
+    # def _train_epoch_maml(self, maml_train_dataloader_list):
+    #     """
+    #     [For maml train]
 
-        Trains one epoch of the network in self.network
+    #     Trains one epoch of the network in self.network
 
-        Parameters
-        ----------
-        train_loader : a :class: `torch.utils.data.Dataloader`
-            DataLoader with train set
-        """
-        self.network.train()
+    #     Parameters
+    #     ----------
+    #     train_loader : a :class: `torch.utils.data.Dataloader`
+    #         DataLoader with train set
+    #     """
+    #     self.network.train()
         
-        for batch_idx, (X, y) in enumerate(train_loader):
-            self._callback_container.on_batch_begin(batch_idx)
-            for i in range(len(maml_train_dataloader)):
-                batch_logs = self._train_batch_maml(X, y)
+    #     for batch_idx, (X, y) in enumerate(train_loader):
+    #         self._callback_container.on_batch_begin(batch_idx)
+    #         for i in range(len(maml_train_dataloader_list)):
+    #             batch_logs = self._train_batch_maml(X, y)
 
-            self._callback_container.on_batch_end(batch_idx, batch_logs)
+    #         self._callback_container.on_batch_end(batch_idx, batch_logs)
 
-        epoch_logs = {"lr": self._optimizer.param_groups[-1]["lr"]}
-        self.history.epoch_metrics.update(epoch_logs)
+    #     epoch_logs = {"lr": self._optimizer.param_groups[-1]["lr"]}
+    #     self.history.epoch_metrics.update(epoch_logs)
 
-        return
+    #     return
 
     def _train_batch_maml(self, X, y):
         """
