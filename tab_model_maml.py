@@ -16,6 +16,8 @@ from pytorch_tabnet.utils import (
     check_input,
     check_warm_start
 )
+from torch.nn.utils import clip_grad_norm_
+
 
 class TaNetRegressorMAML(TabNetRegressor):
     def __post_init__(self):
@@ -30,7 +32,7 @@ class TaNetRegressorMAML(TabNetRegressor):
         X_train_maml,
         y_train_maml,   
         eval_set_maml=None,  
-        wk_weight_list= None,  
+        wk_weight_list= None,
         ## Dataset for maml#########
 
         eval_set=None,
@@ -141,7 +143,7 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         ## For maml
         ############################################################
-        maml_train_dataloader, maml_valid_dataloaders = self.self._maml_construct_loaders(
+        maml_train_dataloader_list, maml_valid_dataloader_list = self.self._maml_construct_loaders(
             X_train_maml, y_train_maml, eval_set_maml
         )
 
@@ -224,7 +226,7 @@ class TaNetRegressorMAML(TabNetRegressor):
         res = np.vstack(results)
         return self.predict_func(res)
 
-    def _train_epoch_maml(self, train_loader):
+    def _train_epoch_maml(self, maml_train_dataloader):
         """
         [For maml train]
 
@@ -236,11 +238,11 @@ class TaNetRegressorMAML(TabNetRegressor):
             DataLoader with train set
         """
         self.network.train()
-
+        
         for batch_idx, (X, y) in enumerate(train_loader):
             self._callback_container.on_batch_begin(batch_idx)
-            
-            batch_logs = self._train_batch_maml(X, y)
+            for i in range(len(maml_train_dataloader)):
+                batch_logs = self._train_batch_maml(X, y)
 
             self._callback_container.on_batch_end(batch_idx, batch_logs)
 
@@ -269,11 +271,12 @@ class TaNetRegressorMAML(TabNetRegressor):
         """
         batch_logs = {"batch_size": X.shape[0]}
 
-        # make tmp_model for meta-learning train
+        # make tmp_model for meta-learning train ############################
         tmp_model = TabNetRegressor()
         tmp_model.input_dim = X.shape[1]
         tmp_model.output_dim = y.shape[1]
         tmp_model._set_network()
+        # make tmp_model for meta-learning train ############################
 
         # train mode -- self.network
         tmp_model.network.train()
@@ -433,45 +436,6 @@ class TaNetRegressorMAML(TabNetRegressor):
             scores = scores.cpu().detach().numpy()
 
         return scores
-    '''
-    def _construct_loaders(self, X_train, y_train, eval_set):
-        """Generate dataloaders for train and eval set.
-
-        Parameters
-        ----------
-        X_train : np.array
-            Train set.
-        y_train : np.array
-            Train targets.
-        eval_set : list of tuple
-            List of eval tuple set (X, y).
-
-        Returns
-        -------
-        train_dataloader : `torch.utils.data.Dataloader`
-            Training dataloader.
-        valid_dataloaders : list of `torch.utils.data.Dataloader`
-            List of validation dataloaders.
-
-        """
-        # all weights are not allowed for this type of model
-        y_train_mapped = self.prepare_target(y_train)
-        for i, (X, y) in enumerate(eval_set):
-            y_mapped = self.prepare_target(y)
-            eval_set[i] = (X, y_mapped)
-
-        train_dataloader, valid_dataloaders = create_dataloaders(
-            X_train,
-            y_train_mapped,
-            eval_set,
-            self.updated_weights,
-            self.batch_size,
-            self.num_workers,
-            self.drop_last,
-            self.pin_memory,
-        )
-        return train_dataloader, valid_dataloaders
-    '''
 
     def _maml_construct_loaders(self, X_train_maml, y_train_maml, eval_set_maml):
 
