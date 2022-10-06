@@ -111,6 +111,9 @@ class TaNetRegressorMAML(TabNetRegressor):
         self.pin_memory = pin_memory and (self.device.type != "cpu")
         self.augmentations = augmentations
 
+        if wk_weight_list is None:
+            self.wk_weight_list = np.ones(len(X_train_maml))
+
         if self.augmentations is not None:
             # This ensure reproducibility
             self.augmentations._set_seed()
@@ -143,7 +146,7 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         ## For maml
         ############################################################
-        maml_train_dataloader_list, maml_valid_dataloaders_list = self.self._maml_construct_loaders(
+        maml_train_dataloader_list, maml_valid_dataloaders_list = self._maml_construct_loaders(
             X_train_maml, y_train_maml, eval_set_maml
         )
 
@@ -174,13 +177,13 @@ class TaNetRegressorMAML(TabNetRegressor):
             # Call method on_epoch_begin for all callbacks
             self._callback_container.on_epoch_begin(epoch_idx)
 
-            # self._train_epoch_maml(maml_train_dataloader_list)#################
-
-            self.network.train()
+            # self._train_epoch_maml(maml_train_dataloader_list)#################            
             
-            for batch_idx in range(maml_train_dataloader_list[0]):
+            for batch_idx in range(len(maml_train_dataloader_list[0])):
                 self._callback_container.on_batch_begin(batch_idx)
-                meat_loss = 0
+                batch_logs = {"batch_size": maml_train_dataloader_list[0][0][0].shape[0]}
+                meta_loss = 0
+
                 for i in range(len(maml_train_dataloader_list)):    # i : meta_task_idx
                     X, y = maml_train_dataloader_list[i][batch_idx]
                     
@@ -207,11 +210,19 @@ class TaNetRegressorMAML(TabNetRegressor):
                     # TODO : to make simple    define make_tmp_model function
                     # make tmp_model for meta-learning train ############################
 
-                    # train mode -- self.network
-                    tmp_model.network.train()
-
                     #################
-                    batch_logs = self._train_batch_maml(tmp_model, X, y)
+                    meta_task_loss = self._train_batch_maml(tmp_model, X, y)
+                    meta_task_loss *= meta_task_loss * self.wk_weight_list[i]   # multifly wmaml weight
+                    meta_loss += meta_task_loss
+
+                # Perform backward pass and optimization
+                self.network.train()
+                meta_loss.backward()
+                if self.clip_value:
+                    clip_grad_norm_(self.network.parameters(), self.clip_value)
+                self._optimizer.step()
+
+                batch_logs["loss"] = meta_loss.cpu().detach().numpy().item()
 
                 self._callback_container.on_batch_end(batch_idx, batch_logs)
 
@@ -312,7 +323,7 @@ class TaNetRegressorMAML(TabNetRegressor):
         batch_logs : dict
             Dictionnary with "batch_size" and "loss".
         """
-        batch_logs = {"batch_size": X.shape[0]}
+        # batch_logs = {"batch_size": X.shape[0]}
 
         X = X.to(self.device).float()
         y = y.to(self.device).float()
@@ -325,6 +336,10 @@ class TaNetRegressorMAML(TabNetRegressor):
         # tmp_model.input_dim = X.shape[1]
         # tmp_model.output_dim = y.shape[1]
         # tmp_model._set_network()
+
+
+        # train mode -- self.network
+        tmp_model.network.train()        
 
         for param in tmp_model.network.parameters():
             param.grad = None
@@ -342,11 +357,16 @@ class TaNetRegressorMAML(TabNetRegressor):
             clip_grad_norm_(tmp_model.network.parameters(), tmp_model.clip_value)
         tmp_model._optimizer.step()
 
+        tmp_model.network.eval() 
 
+        output, M_loss = tmp_model.network(X)
+        loss = tmp_model.compute_loss(output, y)
+        loss = loss - tmp_model.lambda_sparse * M_loss
 
-        batch_logs["loss"] = loss.cpu().detach().numpy().item()
+        # batch_logs["loss"] = loss.cpu().detach().numpy().item()
 
-        return batch_logs
+        # return batch_logs
+        return loss
 
 
     def _train_epoch(self, train_loader):
