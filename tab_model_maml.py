@@ -178,10 +178,38 @@ class TaNetRegressorMAML(TabNetRegressor):
 
             self.network.train()
             
-            for batch_idx, (X, y) in enumerate(maml_train_dataloader_list):
+            for batch_idx in range(maml_train_dataloader_list[0]):
                 self._callback_container.on_batch_begin(batch_idx)
-                for i in range(len(maml_train_dataloader_list)):
-                    batch_logs = self._train_batch_maml(X, y)
+                meat_loss = 0
+                for i in range(len(maml_train_dataloader_list)):    # i : meta_task_idx
+                    X, y = maml_train_dataloader_list[i][batch_idx]
+                    
+                    # make tmp_model for meta-learning train ############################
+                    # TODO : to make simply     define make_tmp_model function
+                    tmp_model = TabNetRegressor()
+                    tmp_model.input_dim = X.shape[1]
+                    tmp_model.output_dim = y.shape[1]
+                    tmp_model._set_network()
+
+                    #
+                    """
+                    Need to know what is evitable step 
+                    in bellow step (
+                        tmp_model._update_network_params()
+                        tmp_model._set_metrics(eval_metric, eval_names)
+                        tmp_model._set_optimizer())
+                    """
+                    tmp_model._update_network_params()
+                    tmp_model._set_metrics(eval_metric, eval_names)
+                    tmp_model._set_optimizer()
+                    # TODO : to make simply     define make_tmp_model function
+                    # make tmp_model for meta-learning train ############################
+
+                    # train mode -- self.network
+                    tmp_model.network.train()
+
+                    #################
+                    batch_logs = self._train_batch_maml(tmp_model, X, y)
 
                 self._callback_container.on_batch_end(batch_idx, batch_logs)
 
@@ -263,7 +291,7 @@ class TaNetRegressorMAML(TabNetRegressor):
 
     #     return
 
-    def _train_batch_maml(self, X, y):
+    def _train_batch_maml(self, tmp_model, X, y):
         """
         Trains one batch of meta datas (meta-learning)
 
@@ -283,16 +311,6 @@ class TaNetRegressorMAML(TabNetRegressor):
         """
         batch_logs = {"batch_size": X.shape[0]}
 
-        # make tmp_model for meta-learning train ############################
-        tmp_model = TabNetRegressor()
-        tmp_model.input_dim = X.shape[1]
-        tmp_model.output_dim = y.shape[1]
-        tmp_model._set_network()
-        # make tmp_model for meta-learning train ############################
-
-        # train mode -- self.network
-        tmp_model.network.train()
-
         X = X.to(self.device).float()
         y = y.to(self.device).float()
 
@@ -307,18 +325,21 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         for param in tmp_model.network.parameters():
             param.grad = None
-
+        # or tmp_model.network.zero_grad() ?
+        
         output, M_loss = tmp_model.network(X)
 
-        loss = self.compute_loss(output, y)
+        loss = tmp_model.compute_loss(output, y)
         # Add the overall sparsity loss
-        loss = loss - self.lambda_sparse * M_loss
+        loss = loss - tmp_model.lambda_sparse * M_loss
 
         # Perform backward pass and optimization
         loss.backward()
-        if self.clip_value:
-            clip_grad_norm_(self.network.parameters(), self.clip_value)
-        self._optimizer.step()
+        if tmp_model.clip_value:
+            clip_grad_norm_(tmp_model.network.parameters(), tmp_model.clip_value)
+        tmp_model._optimizer.step()
+
+
 
         batch_logs["loss"] = loss.cpu().detach().numpy().item()
 
