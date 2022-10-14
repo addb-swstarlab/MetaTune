@@ -109,7 +109,9 @@ class Sampler():
         iterators = []
         for i in range(self.wk_num):
             # wk = self.wk_num[i]
-            iterators.append(iter(self.dataloaders[i]))
+            # iterators.append(iter(self.dataloaders[i]))
+            d_iter = self.dataloaders[i].__iter__()
+            iterators.append(d_iter)
         return iterators
 
     def get_sample(self):
@@ -156,47 +158,47 @@ def MAML_dataset(entire_X_tr, entire_y_tr, entire_X_te, entire_y_te, scaler_X, s
     s_test_y_te = torch.Tensor(scaler_y.transform(test_y_te)).cuda()
 
 
-def pretrain_dataset(entire_X_tr, entire_y_tr, entire_X_te, entire_y_te, scaler_X, scaler_y, wk, batch_size=1):   # wk : using workload ex): [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]  
-    selected_X_tr = pd.DataFrame()
-    selected_y_tr = pd.DataFrame()
-    selected_X_te = pd.DataFrame()
-    selected_y_te = pd.DataFrame()
+# def pretrain_dataset(entire_X_tr, entire_y_tr, entire_X_te, entire_y_te, scaler_X, scaler_y, wk, batch_size=1):   # wk : using workload ex): [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]  
+#     selected_X_tr = pd.DataFrame()
+#     selected_y_tr = pd.DataFrame()
+#     selected_X_te = pd.DataFrame()
+#     selected_y_te = pd.DataFrame()
 
-    test_X_te = pd.DataFrame()
-    test_y_te = pd.DataFrame()  
-    for i in range(len(wk)):
-        X_tr_ = entire_X_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:] #train data set for each workload is 16000
-        y_tr_ = entire_y_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:]
-        X_te_ = entire_X_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:]   #test data set for each workload is 4000
-        y_te_ = entire_y_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:] 
+#     test_X_te = pd.DataFrame()
+#     test_y_te = pd.DataFrame()  
+#     for i in range(len(wk)):
+#         X_tr_ = entire_X_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:] #train data set for each workload is 16000
+#         y_tr_ = entire_y_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:]
+#         X_te_ = entire_X_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:]   #test data set for each workload is 4000
+#         y_te_ = entire_y_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:] 
         
-        selected_X_tr = pd.concat((selected_X_tr, X_tr_))
-        selected_y_tr = pd.concat((selected_y_tr, y_tr_))
-        selected_X_te = pd.concat((selected_X_te, X_te_))
-        selected_y_te = pd.concat((selected_y_te, y_te_))
+#         selected_X_tr = pd.concat((selected_X_tr, X_tr_))
+#         selected_y_tr = pd.concat((selected_y_tr, y_tr_))
+#         selected_X_te = pd.concat((selected_X_te, X_te_))
+#         selected_y_te = pd.concat((selected_y_te, y_te_))
 
-        test_X_te = pd.concat((test_X_te, X_te_))
-        test_y_te = pd.concat((test_y_te, y_te_))
+#         test_X_te = pd.concat((test_X_te, X_te_))
+#         test_y_te = pd.concat((test_y_te, y_te_))
         
-    s_X_tr = torch.Tensor(scaler_X.transform(selected_X_tr)).cuda()
-    s_X_te = torch.Tensor(scaler_X.transform(selected_X_te)).cuda()
-    s_y_tr = torch.Tensor(scaler_y.transform(selected_y_tr)).cuda()
-    s_y_te = torch.Tensor(scaler_y.transform(selected_y_te)).cuda()      
+#     s_X_tr = torch.Tensor(scaler_X.transform(selected_X_tr)).cuda()
+#     s_X_te = torch.Tensor(scaler_X.transform(selected_X_te)).cuda()
+#     s_y_tr = torch.Tensor(scaler_y.transform(selected_y_tr)).cuda()
+#     s_y_te = torch.Tensor(scaler_y.transform(selected_y_te)).cuda()      
 
-        # dataset_tr = TensorDataset(s_X_tr, s_y_tr)
-        # dataset_te = TensorDataset(s_X_te, s_y_te)
-        # DL_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=True)
-        # DL_te = DataLoader(dataset_te, batch_size=batch_size, shuffle=True)
+#         # dataset_tr = TensorDataset(s_X_tr, s_y_tr)
+#         # dataset_te = TensorDataset(s_X_te, s_y_te)
+#         # DL_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=True)
+#         # DL_te = DataLoader(dataset_te, batch_size=batch_size, shuffle=True)
     
-    dataset_tr = TensorDataset(s_X_tr, s_y_tr)
-    dataset_te = TensorDataset(s_X_te, s_y_te)
-    DL_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=True)
-    DL_te = DataLoader(dataset_te, batch_size=batch_size, shuffle=True)
+#     dataset_tr = TensorDataset(s_X_tr, s_y_tr)
+#     dataset_te = TensorDataset(s_X_te, s_y_te)
+#     DL_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=True)
+#     DL_te = DataLoader(dataset_te, batch_size=batch_size, shuffle=True)
 
-    s_test_X_te = torch.Tensor(scaler_X.transform(test_X_te)).cuda()
-    s_test_y_te = torch.Tensor(scaler_y.transform(test_y_te)).cuda()
+#     s_test_X_te = torch.Tensor(scaler_X.transform(test_X_te)).cuda()
+#     s_test_y_te = torch.Tensor(scaler_y.transform(test_y_te)).cuda()
 
-    return DL_tr, DL_te, s_test_X_te, s_test_y_te
+#     return DL_tr, DL_te, s_test_X_te, s_test_y_te
 
 class Tabnet_architecture(TabNetRegressor):
     def __init__(self):
