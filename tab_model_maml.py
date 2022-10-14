@@ -20,9 +20,9 @@ from torch.nn.utils import clip_grad_norm_
 
 from utils import Sampler
 
-class TaNetRegressorMAML(TabNetRegressor):
+class TabNetRegressorMAML(TabNetRegressor):
     def __post_init__(self):
-        super(TaNetRegressorMAML, self).__post_init__()
+        super(TabNetRegressorMAML, self).__post_init__()
     # add maml variable maml=False
     def maml_fit(
         self,
@@ -113,7 +113,8 @@ class TaNetRegressorMAML(TabNetRegressor):
         self.augmentations = augmentations
 
         if wk_weight_list is None:
-            self.wk_weight_list = np.ones(len(X_train_maml))
+            # self.wk_weight_list = np.ones(len(X_train_maml))
+            self.wk_weight_list = np.ones(len(X_train_maml)) / len(X_train_maml)
 
         if self.augmentations is not None:
             # This ensure reproducibility
@@ -165,6 +166,8 @@ class TaNetRegressorMAML(TabNetRegressor):
         self._set_metrics(eval_metric, eval_names)
         self._set_optimizer()
         self._set_callbacks(callbacks)
+        
+        self.network.train()
 
         if from_unsupervised is not None:
             self.load_weights_from_unsupervised(from_unsupervised)
@@ -188,6 +191,10 @@ class TaNetRegressorMAML(TabNetRegressor):
                 meta_loss = 0
                 sample_tr = sampler_tr.get_sample()
                 print(f'sampler_tr_{epoch_idx}epoch_{batch_idx}batch : ')
+
+                for param in self.network.parameters():
+                    param.grad = None
+
                 for i in range(len(maml_train_dataloader_list)):    # i : meta_task_idx
                     # X, y = maml_train_dataloader_list[i][batch_idx]
                     X = sample_tr[i][0]
@@ -203,7 +210,7 @@ class TaNetRegressorMAML(TabNetRegressor):
                     #
                     """
                     Need to know what is evitable step 
-                    in bellow step (
+                    in bellow steps (
                         tmp_model._update_network_params()
                         tmp_model._set_metrics(eval_metric, eval_names)
                         tmp_model._set_optimizer())
@@ -212,22 +219,27 @@ class TaNetRegressorMAML(TabNetRegressor):
                     # tmp_model의 fit 함수를 실행하지 않았기 때문에 아래의 함수들이 실행 안 될 것 같음
                     tmp_model._update_network_params()
                     tmp_model._set_metrics(eval_metric, eval_names) 
-                    tmp_model._set_optimizer()
+                    # tmp_model._set_optimizer()
                     # TODO : to make simple    define make_tmp_model function
                     # make tmp_model for meta-learning train ############################
 
                     #################
                     meta_task_loss = self._train_batch_maml(tmp_model, X, y)
-                    meta_task_loss *= meta_task_loss * self.wk_weight_list[i]   # multifly wmaml weight
+                    # if i == 12:
+                    print(f'[{epoch_idx}/{batch_idx}]{i}th workload loss : {meta_task_loss}')
+                    meta_task_loss = meta_task_loss * self.wk_weight_list[i]   # multifly wmaml weight
                     meta_loss += meta_task_loss
+                    del tmp_model                  
+                
 
                 # Perform backward pass and optimization
-                self.network.train()
+                # self.network.train()
                 meta_loss.backward()
                 if self.clip_value:
                     clip_grad_norm_(self.network.parameters(), self.clip_value)
                 self._optimizer.step()
-
+                # if epoch_idx % 10 == 0:
+                print(f'[{epoch_idx}]META loss : {meta_loss}')
                 # batch_logs["loss"] = meta_loss.cpu().detach().numpy().item()
 
                 # self._callback_container.on_batch_end(batch_idx, batch_logs)
@@ -254,6 +266,9 @@ class TaNetRegressorMAML(TabNetRegressor):
 
         # compute feature importance once the best model is defined
         self.feature_importances_ = self._compute_feature_importances(X_train)
+
+
+
 
     def predict(self, X):
         """
@@ -345,11 +360,14 @@ class TaNetRegressorMAML(TabNetRegressor):
 
 
         # train mode -- self.network
-        tmp_model.network.train()        
+        # tmp_model.network.train()        
 
-        for param in tmp_model.network.parameters():
-            param.grad = None
+        # gradient initialization
+        # for param in tmp_model.network.parameters():
+        #     param.grad = None
         # or tmp_model.network.zero_grad() ?
+
+        temp_weights = [w.clone() for w in list(tmp_model.network.parameters())]
 
         output, M_loss = tmp_model.network(X)
 
@@ -357,13 +375,38 @@ class TaNetRegressorMAML(TabNetRegressor):
         # Add the overall sparsity loss
         loss = loss - tmp_model.lambda_sparse * M_loss
 
-        # Perform backward pass and optimization
-        loss.backward()
-        if tmp_model.clip_value:
-            clip_grad_norm_(tmp_model.network.parameters(), tmp_model.clip_value)
-        tmp_model._optimizer.step()
+        # grad = torch.autograd.grad(loss, list(tmp_model.network.parameters()), allow_unused=True)
+        lr = 0.01
 
-        tmp_model.network.eval() 
+        # temp_weights = [w - lr*g for w,g in zip(temp_weights, grad)]
+
+        # for i, (_, param) in enumerate(tmp_model.network.named_parameters()):
+        #     with torch.no_grad():
+        #         param.copy_(temp_weights[i])
+        
+        # grads = torch.autograd.grad(loss, list(tmp_model.network.parameters()))
+        grads = torch.autograd.grad(loss, tmp_model.network.parameters(),retain_graph=False,create_graph=None,allow_unused=False)       
+
+
+        if grads is not None:
+            params = list(tmp_model.network.parameters())
+            # if not len(grads) == len(list(params)):
+            #     msg = 'WARNING:maml_update(): Parameters and gradients have different length. ('
+            #     msg += str(len(params)) + ' vs ' + str(len(grads)) + ')'
+            #     print(msg)
+            for p, g in zip(params, grads):
+                if g is not None:
+                    p.update = - lr * g
+        # return update_module(model)
+        
+
+        # Perform backward pass and optimization
+        # loss.backward()
+        # if tmp_model.clip_value:
+        #     clip_grad_norm_(tmp_model.network.parameters(), tmp_model.clip_value)
+        # tmp_model._optimizer.step()
+
+        # tmp_model.network.eval() 
 
         output, M_loss = tmp_model.network(X)
         loss = tmp_model.compute_loss(output, y)
