@@ -43,3 +43,31 @@ def valid(model, valid_loader):
             outputs = torch.cat((outputs, output))
     total_loss /= len(valid_loader)
     return total_loss, outputs
+
+
+
+def wmaml_train():
+    pass
+
+def wmaml_valid(maml, maml_dl_te):
+    # check loss
+    maml.eval()
+    with torch.no_grad():
+        total_loss = 0.
+        for i in range(len(maml_dl_te)):
+            total_task_loss = 0.
+            for data, target in maml_dl_te[i]:
+                output, M_loss = maml(data)
+
+                task_loss = F.mse_loss(output, target)
+
+                total_task_loss += task_loss.item()
+            total_task_loss /= len(maml_dl_te[i])
+
+            total_loss += total_task_loss
+        total_loss /= len(maml_dl_te)
+
+        true = target.cpu().detach().numpy().squeeze()
+        pred = output.cpu().detach().numpy().squeeze()
+        r2_res = r2_score(true, pred)
+        return total_loss, outputs
