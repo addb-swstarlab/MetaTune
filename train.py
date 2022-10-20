@@ -1,6 +1,9 @@
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+from utils import Sampler
+from sklearn.metrics import r2_score
+
 
 def train(model, train_loader, lr):
     ## Construct optimizer
@@ -46,7 +49,7 @@ def valid(model, valid_loader):
 
 
 
-def wmaml_train(maml, maml_dl_tr, maml_dl_val):
+def wmaml_train(maml, maml_dl_tr, maml_dl_val, optimizer):
     batch_num = len(maml_dl_tr[0])  
     task_num = len(maml_dl_tr)
     
@@ -84,6 +87,7 @@ def wmaml_train(maml, maml_dl_tr, maml_dl_val):
         optimizer.step()
     # del(tr_sampler)
     # del(val_sampler)
+    return meta_loss # task별로 pred가 나올텐데 pred 합치는 것 어떻게 할지 
 
 def wmaml_valid(maml, maml_dl_te):
     ## Set phase
@@ -91,23 +95,33 @@ def wmaml_valid(maml, maml_dl_te):
 
     ## Valid start 
     total_loss = 0.
-    outputs = torch.Tensor().cuda()
+    # outputs = torch.Tensor().cuda()
+    r2_res_list = []
     with torch.no_grad():
         for i in range(len(maml_dl_te)):    # check each task_meta_data
             total_task_loss = 0.
+            # task_output = torch.Tensor().cuda()           
+            trues = []
+            preds = []
             for data, target in maml_dl_te[i]:  # iteration
                 output, M_loss = maml(data)
 
                 task_loss = F.mse_loss(output, target)
 
                 total_task_loss += task_loss.item()
-                outputs[i] = torch.cat((outputs[i], output))
+                task_output = torch.cat((task_output, output))     
+
+                pred = output.detach().cpu().numpy().squeeze()   
+                true = target.detach().cpu().numpy().squeeze()
+                preds.append(pred)
+                trues.append(true)
+            # outputs = torch.stack(outputs, task_output)        
             total_task_loss /= len(maml_dl_te[i])
-
             total_loss += total_task_loss
-        total_loss /= len(maml_dl_te)
+            r2_res = r2_score(true, pred)
+            r2_res_list.append(r2_res)
 
-        true = target.cpu().detach().numpy().squeeze()
-        pred = output.cpu().detach().numpy().squeeze()
-        r2_res = r2_score(true, pred)   # r2_res의 result?
-        return total_loss, outputs
+        total_loss /= len(maml_dl_te)        
+        r2_sum += r2_res_list.item()
+        r2_mean = r2_sum/len(r2_res_list)
+        return total_loss, r2_mean
