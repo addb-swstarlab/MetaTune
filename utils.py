@@ -2,13 +2,12 @@ import datetime
 import os, logging
 import numpy as np
 import pandas as pd
+import configparser
 
 import torch
 import torch.nn as nn
 from pytorch_tabnet.tab_model import TabNetRegressor
-
 from torch.utils.data import TensorDataset, DataLoader
-
 
 def get_filename(PATH, head, tail):
     i = 0
@@ -97,6 +96,39 @@ def rocksdb_knobs_make_dict(knobs_path):
     dict_data['columnlabels'] = np.array(columns[0])
     return dict_data
 
+def mysql_knob_dataframe(wk, knobs_path):
+    knobs_path = os.path.join(knobs_path, str(wk))
+    config_len = len(os.listdir(knobs_path))
+    cnf_parser = configparser.ConfigParser()
+    pd_mysql = pd.DataFrame()
+    for idx in range(config_len):
+        cnf_parser.read(os.path.join(knobs_path, f'my_{idx}.cnf'))
+        conf_dict = cnf_parser._sections['mysqld']
+        tmp = pd.DataFrame(data=[conf_dict.values()], columns=conf_dict.keys())
+        pd_mysql = pd.concat([pd_mysql, tmp])
+        
+    pd_mysql = pd_mysql.reset_index(drop=True)
+    pd_mysql = pd_mysql.drop(columns=['log-error', 'bind-address'])
+    return pd_mysql
+
+def mysql_metrics_dataframe(wk, internal_path, external_path):
+    internal = pd.read_csv(os.path.join(internal_path, f'internal_results_{wk}.csv'), index_col=0)
+    ## Drop oolumns contained unique data
+    unique_data_column = []
+    for col in internal.columns:
+        if len(pd.value_counts(internal[col])) == 1:
+            unique_data_column.append(col)
+    internal = internal.drop(columns=unique_data_column)
+    
+    external = pd.read_csv(os.path.join(external_path, f'external_results_{wk}.csv'), index_col=0)
+    latency_columns = []
+    for col in external.columns:
+        if col.find("latency") == 0 and col != 'latency_max' and col != 'latency_CLEANUP':
+            latency_columns.append(col)
+    external_ = external[['tps']].copy()
+    external_['latency'] = external[latency_columns].max(axis=1)
+    return internal, external_
+
 
 ## For maml steps
 class Sampler():  
@@ -121,85 +153,7 @@ class Sampler():
             samples[i] = next(self.iterators[i])
         return samples
 
-def MAML_dataset(entire_X_tr, entire_y_tr, entire_X_te, entire_y_te, scaler_X, scaler_y, wk, batch_size=1):
-    DL_tr = []
-    DL_te = []  
-    test_X_te = pd.DataFrame()
-    test_y_te = pd.DataFrame()  
-    for i in range(len(wk)):
-        ############## need to edit number of sample for data
-        X_tr_ = entire_X_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:] #train data set for each workload is 16000
-        y_tr_ = entire_y_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:]
-        X_te_ = entire_X_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:]   #test data set for each workload is 4000
-        y_te_ = entire_y_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:] 
-        ############## need to edit number of sample for data
-
-        s_X_tr = torch.Tensor(scaler_X.transform(X_tr_)).cuda()
-        s_X_te = torch.Tensor(scaler_X.transform(X_te_)).cuda()
-        s_y_tr = torch.Tensor(scaler_y.transform(y_tr_)).cuda()
-        s_y_te = torch.Tensor(scaler_y.transform(y_te_)).cuda()
-
-        # s_X_tr = torch.Tensor(X_tr_.values).cuda()
-        # s_X_te = torch.Tensor(X_te_.values).cuda()
-        # s_y_tr = torch.Tensor(y_tr_.values).cuda()
-        # s_y_te = torch.Tensor(y_te_.values).cuda()
-        test_X_te = pd.concat((test_X_te, X_te_))
-        test_y_te = pd.concat((test_y_te, y_te_))
-        
-
-        dataset_tr = TensorDataset(s_X_tr, s_y_tr)
-        dataset_te = TensorDataset(s_X_te, s_y_te)
-        dataloader_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=True)
-        dataloader_te = DataLoader(dataset_te, batch_size=batch_size, shuffle=True)
-        DL_tr.append(dataloader_tr)
-        DL_te.append(dataloader_te)
-
-    s_test_X_te = torch.Tensor(scaler_X.transform(test_X_te)).cuda()
-    s_test_y_te = torch.Tensor(scaler_y.transform(test_y_te)).cuda()
-
-
-# def pretrain_dataset(entire_X_tr, entire_y_tr, entire_X_te, entire_y_te, scaler_X, scaler_y, wk, batch_size=1):   # wk : using workload ex): [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]  
-#     selected_X_tr = pd.DataFrame()
-#     selected_y_tr = pd.DataFrame()
-#     selected_X_te = pd.DataFrame()
-#     selected_y_te = pd.DataFrame()
-
-#     test_X_te = pd.DataFrame()
-#     test_y_te = pd.DataFrame()  
-#     for i in range(len(wk)):
-#         X_tr_ = entire_X_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:] #train data set for each workload is 16000
-#         y_tr_ = entire_y_tr.iloc[(16000*wk[i]):16000*(wk[i]+1),:]
-#         X_te_ = entire_X_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:]   #test data set for each workload is 4000
-#         y_te_ = entire_y_te.iloc[(4000*wk[i]):4000*(wk[i]+1),:] 
-        
-#         selected_X_tr = pd.concat((selected_X_tr, X_tr_))
-#         selected_y_tr = pd.concat((selected_y_tr, y_tr_))
-#         selected_X_te = pd.concat((selected_X_te, X_te_))
-#         selected_y_te = pd.concat((selected_y_te, y_te_))
-
-#         test_X_te = pd.concat((test_X_te, X_te_))
-#         test_y_te = pd.concat((test_y_te, y_te_))
-        
-#     s_X_tr = torch.Tensor(scaler_X.transform(selected_X_tr)).cuda()
-#     s_X_te = torch.Tensor(scaler_X.transform(selected_X_te)).cuda()
-#     s_y_tr = torch.Tensor(scaler_y.transform(selected_y_tr)).cuda()
-#     s_y_te = torch.Tensor(scaler_y.transform(selected_y_te)).cuda()      
-
-#         # dataset_tr = TensorDataset(s_X_tr, s_y_tr)
-#         # dataset_te = TensorDataset(s_X_te, s_y_te)
-#         # DL_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=True)
-#         # DL_te = DataLoader(dataset_te, batch_size=batch_size, shuffle=True)
-    
-#     dataset_tr = TensorDataset(s_X_tr, s_y_tr)
-#     dataset_te = TensorDataset(s_X_te, s_y_te)
-#     DL_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=True)
-#     DL_te = DataLoader(dataset_te, batch_size=batch_size, shuffle=True)
-
-#     s_test_X_te = torch.Tensor(scaler_X.transform(test_X_te)).cuda()
-#     s_test_y_te = torch.Tensor(scaler_y.transform(test_y_te)).cuda()
-
-#     return DL_tr, DL_te, s_test_X_te, s_test_y_te
-
+# for train tabnet with wmaml
 class Tabnet_architecture(TabNetRegressor):
     def __init__(self):
         super(Tabnet_architecture, self).__init__()
@@ -231,6 +185,7 @@ class Tabnet_architecture(TabNetRegressor):
             self._set_network()
         self._update_network_params()
 
+# for train tabnet with wmaml
 class Set_tabnet_network(nn.Module):
     def __init__(self, m, x_train, y_train, x_eval, y_eval):
         super(Set_tabnet_network, self).__init__()
@@ -248,3 +203,77 @@ class Set_tabnet_network(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+def make_wmaml_dataloader(knobs, opt):
+    """ make dataset"""
+    ## wmaml dataset
+    X_target_tr = knobs.norm_X_dict['tr'][opt.target]
+    y_target_tr = knobs.norm_em_dict['tr'][opt.target]
+    X_target_val = knobs.norm_X_dict['val'][opt.target]
+    y_target_val = knobs.norm_em_dict['val'][opt.target]
+    eval_set = [(X_target_val, y_target_val)]
+
+    X_maml_tr = knobs.norm_X_dict['tr'].copy()
+    del(X_maml_tr[opt.target])
+    y_maml_tr = knobs.norm_em_dict['tr'].copy()
+    del(y_maml_tr[opt.target])
+
+    X_maml_val = knobs.norm_X_dict['val'].copy()
+    del(X_maml_val[opt.target])
+    y_maml_val = knobs.norm_em_dict['val'].copy()
+    del(y_maml_val[opt.target])
+
+    X_maml_te = knobs.norm_X_dict['te'].copy()
+    del(X_maml_te[opt.target])
+    y_maml_te = knobs.norm_em_dict['te'].copy()
+    del(y_maml_te[opt.target])
+
+    eval_set_maml = []
+    for i in range(len(X_maml_val)):
+        X_val_ = X_maml_val[i]
+        y_val_ = y_maml_val[i]
+        eval_set_maml.append([(X_val_, y_val_)])
+
+    ## adaptation dataset
+    X_target_tr = knobs.norm_X_dict['tr'][opt.target]
+    y_target_tr = knobs.norm_em_dict['tr'][opt.target]
+    X_target_val = knobs.norm_X_dict['val'][opt.target]
+    y_target_val = knobs.norm_em_dict['val'][opt.target]
+    X_target_te = knobs.norm_X_dict['te'][opt.target]
+    y_target_te = knobs.norm_em_dict['te'][opt.target]
+
+    """ make dataloader """
+    ## wmaml dataloader
+    maml_dl_tr = []
+    maml_dl_val = []
+    maml_dl_te = []
+
+    for i in range(len(X_maml_tr)):
+        dataset_tr = TensorDataset(X_maml_tr[i], y_maml_tr[i])
+        dataset_val = TensorDataset(X_maml_val[i], y_maml_val[i])
+        dataset_te = TensorDataset(X_maml_te[i], y_maml_te[i])
+
+        dataloader_tr = DataLoader(dataset_tr, batch_size=opt.batch_size, shuffle=True)
+        dataloader_val = DataLoader(dataset_val, batch_size=opt.batch_size, shuffle=True)
+        dataloader_te = DataLoader(dataset_te, batch_size=opt.batch_size, shuffle=True)
+
+        maml_dl_tr.append(dataloader_tr)
+        maml_dl_val.append(dataloader_val)
+        maml_dl_te.append(dataloader_te)
+
+    ## adaptation dataloader
+    dataset_tr = TensorDataset(X_maml_tr[i], y_maml_tr[i])
+    dataset_val = TensorDataset(X_maml_val[i], y_maml_val[i])
+    dataset_te = TensorDataset(X_maml_te[i], y_maml_te[i])
+
+    dataloader_tr = DataLoader(dataset_tr, batch_size=opt.batch_size, shuffle=True)
+    dataloader_val = DataLoader(dataset_val, batch_size=opt.batch_size, shuffle=True)
+    dataloader_te = DataLoader(dataset_te, batch_size=opt.batch_size, shuffle=True)
+
+    maml_dl_tr.append(dataloader_tr)
+    maml_dl_val.append(dataloader_val)
+    maml_dl_te.append(dataloader_te)
+
+    
+
+    return maml_dl_tr, maml_dl_val, maml_dl_te
