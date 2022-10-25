@@ -155,35 +155,45 @@ class Sampler():
 
 # for train tabnet with wmaml
 class Tabnet_architecture(TabNetRegressor):
-    def __init__(self):
+    def __init__(self, X, y):
         super(Tabnet_architecture, self).__init__()
+        self.input_dim = X.shape[-1]
+        self.output_dim = y.shape[-1]
 
-    def fit(
-        self,
-        X_train,
-        y_train,
-        input_dim=10,
-        eval_set=None,
-        weights=0,
-        batch_size=1024,
-        virtual_batch_size=128,
-        drop_last=False
-    ):
-        self.virtual_batch_size = virtual_batch_size
-        self.drop_last = drop_last
-        self.input_dim = input_dim
-        self._stop_training = False
+        self._set_network()
+    
+    def set_network(self):
+        return self.network
+# class Tabnet_architecture(TabNetRegressor):
+#     def __init__(self):
+#         super(Tabnet_architecture, self).__init__()
 
-        self.update_fit_params(
-            X_train,
-            y_train,
-            eval_set,
-            weights,
-        )
+#     def fit(
+#         self,
+#         X_train,
+#         y_train,
+#         input_dim=10,
+#         eval_set=None,
+#         weights=0,
+#         batch_size=1024,
+#         virtual_batch_size=128,
+#         drop_last=False
+#     ):
+#         self.virtual_batch_size = virtual_batch_size
+#         self.drop_last = drop_last
+#         self.input_dim = input_dim
+#         self._stop_training = False
 
-        if not hasattr(self, "network"):
-            self._set_network()
-        self._update_network_params()
+#         self.update_fit_params(
+#             X_train,
+#             y_train,
+#             eval_set,
+#             weights,
+#         )
+
+#         if not hasattr(self, "network"):
+#             self._set_network()
+#         self._update_network_params()
 
 # for train tabnet with wmaml
 class Set_tabnet_network(nn.Module):
@@ -204,76 +214,148 @@ class Set_tabnet_network(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-def make_wmaml_dataloader(knobs, opt):
-    """ make dataset"""
-    ## wmaml dataset
-    X_target_tr = knobs.norm_X_dict['tr'][opt.target]
-    y_target_tr = knobs.norm_em_dict['tr'][opt.target]
-    X_target_val = knobs.norm_X_dict['val'][opt.target]
-    y_target_val = knobs.norm_em_dict['val'][opt.target]
-    eval_set = [(X_target_val, y_target_val)]
+class WmamlData:
+    def __init__(self, knobs, opt):
+        self.knobs = knobs
+        self.opt = opt
 
-    X_maml_tr = knobs.norm_X_dict['tr'].copy()
-    del(X_maml_tr[opt.target])
-    y_maml_tr = knobs.norm_em_dict['tr'].copy()
-    del(y_maml_tr[opt.target])
+    def make_data(self):
+        ## wmaml dataset
+        self.X_maml_tr = self.knobs.norm_X_dict['tr'].copy()          # train  
+        self.y_maml_tr = self.knobs.norm_em_dict['tr'].copy()
+        del(self.X_maml_tr[self.opt.target])
+        del(self.y_maml_tr[self.opt.target])
+        self.X_maml_val = self.knobs.norm_X_dict['val'].copy()        # validation   
+        self.y_maml_val = self.knobs.norm_em_dict['val'].copy()
+        del(self.X_maml_val[self.opt.target])
+        del(self.y_maml_val[self.opt.target])
+        self.X_maml_te = self.knobs.norm_X_dict['te'].copy()          # test
+        self.y_maml_te = self.knobs.norm_em_dict['te'].copy()
+        del(self.X_maml_te[self.opt.target])
+        del(self.y_maml_te[self.opt.target])
 
-    X_maml_val = knobs.norm_X_dict['val'].copy()
-    del(X_maml_val[opt.target])
-    y_maml_val = knobs.norm_em_dict['val'].copy()
-    del(y_maml_val[opt.target])
+        # eval_set_maml = []
+        # for i in range(len(X_maml_val)):
+        #     X_val_ = X_maml_val[i]
+        #     y_val_ = y_maml_val[i]
+        #     eval_set_maml.append([(X_val_, y_val_)])
 
-    X_maml_te = knobs.norm_X_dict['te'].copy()
-    del(X_maml_te[opt.target])
-    y_maml_te = knobs.norm_em_dict['te'].copy()
-    del(y_maml_te[opt.target])
+        ## adaptation dataset
+        self.X_target_tr = self.knobs.norm_X_dict['tr'][self.opt.target]
+        self.y_target_tr = self.knobs.norm_em_dict['tr'][self.opt.target]
+        self.X_target_val = self.knobs.norm_X_dict['val'][self.opt.target]
+        self.y_target_val = self.knobs.norm_em_dict['val'][self.opt.target]
+        self.X_target_te = self.knobs.norm_X_dict['te'][self.opt.target]
+        self.y_target_te = self.knobs.norm_em_dict['te'][self.opt.target]
+        # eval_set = [(X_target_val, y_target_val)]
 
-    eval_set_maml = []
-    for i in range(len(X_maml_val)):
-        X_val_ = X_maml_val[i]
-        y_val_ = y_maml_val[i]
-        eval_set_maml.append([(X_val_, y_val_)])
+    def make_dataloader(self):
+        """ make dataloader """
+        ## wmaml dataloader
+        self.maml_dl_tr = []
+        self.maml_dl_val = []
+        self.maml_dl_te = []
 
-    ## adaptation dataset
-    X_target_tr = knobs.norm_X_dict['tr'][opt.target]
-    y_target_tr = knobs.norm_em_dict['tr'][opt.target]
-    X_target_val = knobs.norm_X_dict['val'][opt.target]
-    y_target_val = knobs.norm_em_dict['val'][opt.target]
-    X_target_te = knobs.norm_X_dict['te'][opt.target]
-    y_target_te = knobs.norm_em_dict['te'][opt.target]
+        for i in range(len(self.X_maml_tr)):
+            dataset_tr = TensorDataset(self.X_maml_tr[i], self.y_maml_tr[i])
+            dataset_val = TensorDataset(self.X_maml_val[i], self.y_maml_val[i])
+            dataset_te = TensorDataset(self.X_maml_te[i], self.y_maml_te[i])
 
-    """ make dataloader """
-    ## wmaml dataloader
-    maml_dl_tr = []
-    maml_dl_val = []
-    maml_dl_te = []
+            dataloader_tr = DataLoader(dataset_tr, batch_size=self.opt.batch_size, shuffle=True)
+            dataloader_val = DataLoader(dataset_val, batch_size=self.opt.batch_size, shuffle=True)
+            dataloader_te = DataLoader(dataset_te, batch_size=self.opt.batch_size, shuffle=True)
 
-    for i in range(len(X_maml_tr)):
-        dataset_tr = TensorDataset(X_maml_tr[i], y_maml_tr[i])
-        dataset_val = TensorDataset(X_maml_val[i], y_maml_val[i])
-        dataset_te = TensorDataset(X_maml_te[i], y_maml_te[i])
+            self.maml_dl_tr.append(dataloader_tr)
+            self.maml_dl_val.append(dataloader_val)
+            self.maml_dl_te.append(dataloader_te)
 
-        dataloader_tr = DataLoader(dataset_tr, batch_size=opt.batch_size, shuffle=True)
-        dataloader_val = DataLoader(dataset_val, batch_size=opt.batch_size, shuffle=True)
-        dataloader_te = DataLoader(dataset_te, batch_size=opt.batch_size, shuffle=True)
+        ## adaptation dataloader
+        
+        dataset_tr = TensorDataset(self.X_maml_tr[i], self.y_maml_tr[i])
+        dataset_val = TensorDataset(self.X_maml_val[i], self.y_maml_val[i])
+        dataset_te = TensorDataset(self.X_maml_te[i], self.y_maml_te[i])
 
-        maml_dl_tr.append(dataloader_tr)
-        maml_dl_val.append(dataloader_val)
-        maml_dl_te.append(dataloader_te)
+        dataloader_tr = DataLoader(dataset_tr, batch_size=self.opt.batch_size, shuffle=True)
+        dataloader_val = DataLoader(dataset_val, batch_size=self.opt.batch_size, shuffle=True)
+        dataloader_te = DataLoader(dataset_te, batch_size=self.opt.batch_size, shuffle=True)
 
-    ## adaptation dataloader
-    dataset_tr = TensorDataset(X_maml_tr[i], y_maml_tr[i])
-    dataset_val = TensorDataset(X_maml_val[i], y_maml_val[i])
-    dataset_te = TensorDataset(X_maml_te[i], y_maml_te[i])
+        self.adapt_dl_tr = dataloader_tr
+        self.adapt_dl_val = dataloader_val
+        self.adapt_dl_te = dataloader_te
 
-    dataloader_tr = DataLoader(dataset_tr, batch_size=opt.batch_size, shuffle=True)
-    dataloader_val = DataLoader(dataset_val, batch_size=opt.batch_size, shuffle=True)
-    dataloader_te = DataLoader(dataset_te, batch_size=opt.batch_size, shuffle=True)
-
-    maml_dl_tr.append(dataloader_tr)
-    maml_dl_val.append(dataloader_val)
-    maml_dl_te.append(dataloader_te)
 
     
 
-    return maml_dl_tr, maml_dl_val, maml_dl_te
+# def wmaml_data(knobs, opt):  # class로 다시 정의
+#     """ make dataset"""
+#     ## wmaml dataset
+#     X_target_tr = knobs.norm_X_dict['tr'][opt.target]
+#     y_target_tr = knobs.norm_em_dict['tr'][opt.target]
+#     X_target_val = knobs.norm_X_dict['val'][opt.target]
+#     y_target_val = knobs.norm_em_dict['val'][opt.target]
+#     eval_set = [(X_target_val, y_target_val)]
+
+#     X_maml_tr = knobs.norm_X_dict['tr'].copy()
+#     del(X_maml_tr[opt.target])
+#     y_maml_tr = knobs.norm_em_dict['tr'].copy()
+#     del(y_maml_tr[opt.target])
+
+#     X_maml_val = knobs.norm_X_dict['val'].copy()
+#     del(X_maml_val[opt.target])
+#     y_maml_val = knobs.norm_em_dict['val'].copy()
+#     del(y_maml_val[opt.target])
+
+#     X_maml_te = knobs.norm_X_dict['te'].copy()
+#     del(X_maml_te[opt.target])
+#     y_maml_te = knobs.norm_em_dict['te'].copy()
+#     del(y_maml_te[opt.target])
+
+#     eval_set_maml = []
+#     for i in range(len(X_maml_val)):
+#         X_val_ = X_maml_val[i]
+#         y_val_ = y_maml_val[i]
+#         eval_set_maml.append([(X_val_, y_val_)])
+
+#     ## adaptation dataset
+#     X_target_tr = knobs.norm_X_dict['tr'][opt.target]
+#     y_target_tr = knobs.norm_em_dict['tr'][opt.target]
+#     X_target_val = knobs.norm_X_dict['val'][opt.target]
+#     y_target_val = knobs.norm_em_dict['val'][opt.target]
+#     X_target_te = knobs.norm_X_dict['te'][opt.target]
+#     y_target_te = knobs.norm_em_dict['te'][opt.target]
+
+#     """ make dataloader """
+#     ## wmaml dataloader
+#     maml_dl_tr = []
+#     maml_dl_val = []
+#     maml_dl_te = []
+
+#     for i in range(len(X_maml_tr)):
+#         dataset_tr = TensorDataset(X_maml_tr[i], y_maml_tr[i])
+#         dataset_val = TensorDataset(X_maml_val[i], y_maml_val[i])
+#         dataset_te = TensorDataset(X_maml_te[i], y_maml_te[i])
+
+#         dataloader_tr = DataLoader(dataset_tr, batch_size=opt.batch_size, shuffle=True)
+#         dataloader_val = DataLoader(dataset_val, batch_size=opt.batch_size, shuffle=True)
+#         dataloader_te = DataLoader(dataset_te, batch_size=opt.batch_size, shuffle=True)
+
+#         maml_dl_tr.append(dataloader_tr)
+#         maml_dl_val.append(dataloader_val)
+#         maml_dl_te.append(dataloader_te)
+
+#     ## adaptation dataloader
+#     dataset_tr = TensorDataset(X_maml_tr[i], y_maml_tr[i])
+#     dataset_val = TensorDataset(X_maml_val[i], y_maml_val[i])
+#     dataset_te = TensorDataset(X_maml_te[i], y_maml_te[i])
+
+#     dataloader_tr = DataLoader(dataset_tr, batch_size=opt.batch_size, shuffle=True)
+#     dataloader_val = DataLoader(dataset_val, batch_size=opt.batch_size, shuffle=True)
+#     dataloader_te = DataLoader(dataset_te, batch_size=opt.batch_size, shuffle=True)
+
+#     maml_dl_tr.append(dataloader_tr)
+#     maml_dl_val.append(dataloader_val)
+#     maml_dl_te.append(dataloader_te)
+
+    
+
+#     return maml_dl_tr, maml_dl_val, maml_dl_te
