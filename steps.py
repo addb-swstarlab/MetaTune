@@ -57,11 +57,14 @@ import logging
 #     return idx
 def get_distance_list(knobs, opt): # uclidean or matalobis distance
     im_statics = {}
+    d_list = {}
     drop_columns = ['count', 'min', 'max']
     for i in range(len(knobs.internal_metrics)):
         im_statics[i] = knobs.internal_metrics[0].describe().T.drop(columns=drop_columns).T # (5, 148)
         
     target_im_statics = im_statics[opt.target]
+    
+    d = distance_function() # calculate distance 
 
     # Get uclidean distance
 
