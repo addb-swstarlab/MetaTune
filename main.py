@@ -2,7 +2,7 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
-from benchmark import exec_benchmark
+# from benchmark import exec_benchmark
 from utils import get_logger, rocksdb_knobs_make_dict, mysql_knob_dataframe, mysql_metrics_dataframe
 from knobs import Knob
 from steps import train_fitness_function, GA_optimization, make_dbbench_command, make_mysql_configuration
@@ -15,29 +15,33 @@ from lifelines.utils import concordance_index
 os.system('clear')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dbms', type=str, choices=['rocksdb', 'mysql'], help='choose dbms, rocksdb or mysql')
-parser.add_argument('--target', type=int, default=0, help='Choose target workload')
+parser.add_argument('--dbms', type=str, default='rocksdb', choices=['rocksdb', 'mysql'], help='choose dbms, rocksdb or mysql')
+parser.add_argument('--target', type=int, default=15, help='Choose target workload')
 # parser.add_argument('--target_size', type=int, default=10, help='Define target workload size')
-parser.add_argument('--lr', type=float, default=0.001, help='Define learning rate')
-parser.add_argument('--epochs', type=int, default=50, help='Define train epochs')
+parser.add_argument('--lr', type=float, default=0.005, help='Define learning rate')
+parser.add_argument('--epochs', type=int, default=150, help='Define train epochs')
+parser.add_argument('--patience', type=int, default=10, help='Define earlystop count')
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
-parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
-parser.add_argument('--ga', type=str, default='GA', choices=['GA', 'NSGA2', 'NSGA3'], help='choose genetic algorithm')
-parser.add_argument('--mode', type=str, default='dnn', help='choose which model be used on fitness function')
+parser.add_argument('--batch_size', type=int, default=1024, help='Define model batch size')
+parser.add_argument('--mode', type=str, default='tabnet', help='choose which model be used on fitness function')   # tabnet, RF, dnn
+parser.add_argument('--train_type', type=str, default='wmaml', help="Choose train type 'normal', 'wmaml', 'ranking_step_pretrain(or 'rsp')")   # for wmaml
+parser.add_argument('--wmaml_epochs', type=int, default=300, help='Define wmaml train epochs')
+parser.add_argument('--wmaml_in_lr', type=float, default=0.05, help='Define inner_learning rate for inner loop of wmaml train')  # for wmaml
+parser.add_argument('--wmaml_lr', type=float, default=0.005, help='Define wmaml learning rate')
 
-parser.add_argument('--train_type', type=str, default='normal', help="Choose train type 'normal', 'wmaml', 'ranking_step_pretrain(or 'rsp')")   # for wmaml
-parser.add_argument('--in_lr', type=float, default=0.001, help='Define inner_learning rate for inner loop of wmaml train')  # for wmaml
+
 
 # parser.add_argument('--eval', action='store_true', help='if trigger, model goes eval mode')
 # parser.add_argument('--train', action='store_true', help='if trigger, model goes triain mode')
 # parser.add_argument('--model_path', type=str, help='Define which .pt will be loaded on model')
+parser.add_argument('--ga', type=str, default='GA', choices=['GA', 'NSGA2', 'NSGA3'], help='choose genetic algorithm')
 parser.add_argument('--population', type=int, default=100, help='Define the number of generation to GA algorithm')
 parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
 # parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
 # parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 # parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
 
-
+  
 opt = parser.parse_args()
 
 if not os.path.exists('logs'):
@@ -58,8 +62,8 @@ DBMS_PATH = f'{opt.dbms}'
 KNOB_PATH = os.path.join('data', DBMS_PATH, 'configs')
 EXTERNAL_PATH = os.path.join('data', DBMS_PATH, 'external')
 INTERNAL_PATH = os.path.join('data', DBMS_PATH, 'internal')
-WK_NUM = 3 # MySQL
-# WK_NUM = 16 # RocksDB
+# WK_NUM = 3 # MySQL
+WK_NUM = 16 # RocksDB
 
 def main():
     """ ## 데이터 전처리 ############################################################################################ """
@@ -76,6 +80,17 @@ def main():
         '''
         raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
         raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
+
+        """ make knobs_oh : knobs + one_hot vector """
+        knobs_oh = {}
+        one_hot = np.eye(WK_NUM, dtype=int)
+
+        for wk in range(WK_NUM):
+            oh = np.repeat([one_hot[wk]], len(raw_knobs), axis=0)
+            oh = pd.DataFrame(oh)
+            data_wk = pd.concat((raw_knobs, oh), axis=1)
+            knobs_oh[wk] = data_wk            
+        """ make knobs_oh : knobs + one_hot vector """
         
         pruned_im = pd.read_csv(os.path.join(INTERNAL_PATH, 'internal_ensemble_pruned_tmp.csv'), index_col=0)
         for wk in range(WK_NUM):
@@ -107,7 +122,9 @@ def main():
     logger.info('## get raw datas DONE ##')
 
 
-    knobs = Knob(raw_knobs, internal_dict, external_dict, opt)
+    # knobs = Knob(raw_knobs, internal_dict, external_dict, opt)
+    knobs = Knob(raw_knobs, knobs_oh, internal_dict, external_dict, opt)
+
 
 
     knobs.split_data()
@@ -123,20 +140,27 @@ def main():
 
     # if opt.train:
     logger.info("## Train Fitness Function ##")
-    fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)   
-    
-    if opt.mode == "RF":
-        # if outputs' type are numpy array
-        pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
-    else:
-        # if outputs' type are torch.tensor
-        pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)    
-        
-    true = knobs.em_te.to_numpy()
+    # fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)   
+    fitness_function, outputs = train_fitness_function(knobs=knobs, opt=opt)   
 
-    for i in range(10):
-        logger.info(f'predict rslt: {pred[i]}')
-        logger.info(f'ground truth: {true[i]}\n')
+    
+
+    if opt.train_type == 'wmaml':
+        pred = np.round(knobs.scaler_em_dict[opt.target].inverse_transform(outputs), 2)
+        true = knobs.norm_em_dict['te'][opt.target].cpu().detach().numpy()
+    else:
+        if opt.mode == "RF":
+            # if outputs' type are numpy array
+            pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
+        else:
+            # if outputs' type are torch.tensor
+            pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)    
+            
+        true = knobs.em_te.to_numpy()
+
+        for i in range(10):
+            logger.info(f'predict rslt: {pred[i]}')
+            logger.info(f'ground truth: {true[i]}\n')
     
     # elif opt.eval:
     #     logger.info("## Load Trained Fitness Function ##")
@@ -177,38 +201,38 @@ def main():
 
 
     """ ## GA_optimization ########################################################################################## """
-    """ ## GA_optimization ########################################################################################## """
+    # """ ## GA_optimization ########################################################################################## """
     
-    # res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
-    res_F, results = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    # # res_F, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    # res_F, results = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
     
-    if opt.ga == "NSGA2":
-        logger.info(f'## Predicted External metrics from genetic algorithm ##')
-        if opt.dbms == 'rocksdb':
-            logger.info(f'TIME: {res_F[0]}')
-            logger.info(f'RATE: {res_F[1]}')
-            logger.info(f'WAF: {res_F[2]}')
-            logger.info(f'SA: {res_F[3]}')
-        elif opt.dbms == 'mysql':
-            logger.info(f'TPS: {res_F[0]}')
-            logger.info(f'LATENCY: {res_F[1]}')
+    # if opt.ga == "NSGA2":
+    #     logger.info(f'## Predicted External metrics from genetic algorithm ##')
+    #     if opt.dbms == 'rocksdb':
+    #         logger.info(f'TIME: {res_F[0]}')
+    #         logger.info(f'RATE: {res_F[1]}')
+    #         logger.info(f'WAF: {res_F[2]}')
+    #         logger.info(f'SA: {res_F[3]}')
+    #     elif opt.dbms == 'mysql':
+    #         logger.info(f'TPS: {res_F[0]}')
+    #         logger.info(f'LATENCY: {res_F[1]}')
     
-    logger.info("## Train/Load Fitness Function DONE ##")
-    logger.info("## Configuration Recommendation DONE ##")
+    # logger.info("## Train/Load Fitness Function DONE ##")
+    # logger.info("## Configuration Recommendation DONE ##")
     
-    if opt.dbms=='rocksdb':
-        recommend_command = make_dbbench_command(knobs, results, opt.target)
-        logger.info(f"db_bench command is  {recommend_command}")
-        exec_benchmark(recommend_command, opt)
+    # if opt.dbms=='rocksdb':
+    #     recommend_command = make_dbbench_command(knobs, results, opt.target)
+    #     logger.info(f"db_bench command is  {recommend_command}")
+    #     # exec_benchmark(recommend_command, opt)
         
-        if os.path.exists('res.txt'):
-            logger.info('## Results of External Metrics ##')
-            f = open('res.txt')
-            bench_res = f.readlines()
-            for _ in bench_res:
-                logger.info(f'{_[:-1]}')
-    elif opt.dbms=='mysql':
-        make_mysql_configuration(knobs, results)
+    #     if os.path.exists('res.txt'):
+    #         logger.info('## Results of External Metrics ##')
+    #         f = open('res.txt')
+    #         bench_res = f.readlines()
+    #         for _ in bench_res:
+    #             logger.info(f'{_[:-1]}')
+    # elif opt.dbms=='mysql':
+    #     make_mysql_configuration(knobs, results)
     
     # exec_benchmark(recommend_command, opt)
     
