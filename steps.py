@@ -7,14 +7,21 @@ from datetime import datetime
 import torch
 from torch.utils.data import DataLoader
 from network import RocksDBDataset, SingleNet
-from train import train, valid
-from utils import get_filename
+from train import train, valid, wmaml_train, wmaml_valid
+from utils import (
+    get_filename, Tabnet_architecture, 
+    Set_tabnet_network, WmamlData,
+    )
+
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error as mse
 import rocksdb_option as option
 from scipy.stats import gmean
 from sklearn.ensemble import RandomForestRegressor
 # from ga import RocksDBSingleProblem, RocksDBMultiProblem, genetic_algorithm
 from ga import DBMSProblem, genetic_algorithm
 
+import logging
 # def euclidean_distance(a, b):
 #     res = a - b
 #     res = res ** 2
@@ -48,11 +55,115 @@ from ga import DBMSProblem, genetic_algorithm
 #     logger.info(f'best similar workload is {idx}th')
 
 #     return idx
+def get_distance_list(knobs, opt): # uclidean or matalobis distance
+    im_statics = {}
+    drop_columns = ['count', 'min', 'max']
+    for i in range(len(knobs.internal_metrics)):
+        im_statics[i] = knobs.internal_metrics[0].describe().T.drop(columns=drop_columns).T # (5, 148)
+        
+    target_im_statics = im_statics[opt.target]
 
-def train_fitness_function(knobs, logger, opt):
+    # Get uclidean distance
+
+    ## Get Convariance from internal metric data
+    # cov_internal_metrics = pd.concat(wk_stats_list, axis=1).T.cov() # (5, 148*16) => (148*16, 5) => (5, 5)
+
+# def train_fitness_function(knobs, logger, opt):
+def train_fitness_function(knobs, opt):
+
     if opt.train_type == 'wmaml':
-        """ calculate weighted workload similarity """
-        pass
+        from learn2learn.algorithms import MAML
+        from utils import Tabnet_architecture
+        """ calculate weighted workload similarity step"""        
+        # w = get_mahalobis_distance(knobs, opt)  # weight of workload similarity len(w) is number of workload
+
+        if opt.mode == 'tabnet':
+            logging.info(f"[Make dataset for wmaml]")      
+            # maml_dl_tr, maml_dl_val, maml_dl_te = make_wmaml_dataloader(knobs, opt)
+            data = WmamlData(knobs, opt)
+            data.make_data()
+            data.make_dataloader()
+
+            logging.info(f"[Train MODE] Training Model WMAML step start")         
+            arch = Tabnet_architecture(knobs.norm_X_dict['tr'][0], knobs.norm_em_dict['tr'][0])
+            tabnet_model = arch.set_network()
+            # tabnet_model.network = tabnet_model.network.cuda() 
+            maml = MAML(tabnet_model, lr=opt.wmaml_in_lr).cuda()
+            optimizer = torch.optim.Adam(maml.parameters(), lr=opt.wmaml_lr)
+            best_loss = np.inf
+            patience = 0           
+            name = get_filename('model_save/wmaml', 'model', '.pt')
+
+            for epoch in range(opt.wmaml_epochs):
+                loss_tr = wmaml_train(maml, data.maml_dl_tr, data.maml_dl_val, optimizer)
+                loss_te, r2_res = wmaml_valid(maml, data.maml_dl_te)
+                logging.info(f"[{(epoch+1):02d}/{opt.wmaml_epochs}] loss_tr: {loss_tr:.8f} | loss_te:{loss_te:.8f} | R2 : {r2_res:.8f} | patience : {patience}")
+
+                # update best model
+                if best_loss > loss_te:
+                    best_loss = loss_te
+                    best_model = maml
+                    best_epoch = epoch + 1
+                    best_model = maml
+                    best_r2 = r2_res
+                    patience = 0
+                    torch.save(best_model.module.state_dict(), os.path.join('model_save/wmaml', name))
+                else:
+                    patience += 1
+                
+                if patience >= opt.patience:
+                    logging.info(f"Early stopping") 
+                    # logging.info(f"Epoch [{best_epoch}/{opt.wmaml_epochs}] : Total_loss : {best_loss:.6f} | R2 : {best_r2:.6f} | patience : {patience}, save model to {os.path.join('model_save/wmaml', name)}")                   
+                    break
+            logging.info(f"---------------wmaml train step finish---------------") 
+            logging.info(f"Epoch [{best_epoch}/{opt.wmaml_epochs}] : Total_loss : {best_loss:.6f} | R2 : {best_r2:.6f} | patience : {patience}, save model to {os.path.join('model_save/wmaml', name)}")
+                
+            logging.info(f"[Train MODE] Training Model Adaptation step start") 
+
+            model = Tabnet_architecture(knobs.norm_X_dict['tr'][opt.target], knobs.norm_em_dict['tr'][opt.target])
+            model.set_network()
+            model.network = best_model.module.state_dict()
+            model.fit(data.X_target_tr.cpu().detach().numpy(), 
+                      data.y_target_tr.cpu().detach().numpy(),
+                      eval_set=[(
+                                data.X_target_val.cpu().detach().numpy(), 
+                                data.y_target_val.cpu().detach().numpy()
+                                )],
+                      max_epochs=opt.epochs, 
+                      patience=opt.patience)
+            preds = model.predict(data.X_target_te.cpu().detach().numpy())
+            # preds = outputs.cpu().detach().numpy()
+            trues = data.y_target_te.cpu().detach().numpy()
+            mse_res = mse(trues, preds)
+            r2_res = r2_score(trues, preds)
+            # mse_res = mse(data.y_target_te, preds)
+            # r2_res = r2_score(data.y_target_te, preds)
+            logging.info(f"[Train MODE] Training Model Adaptation step finish | MSE : {mse_res:.6f} | R2 : {r2_res:.6f}")  
+            
+            # global
+            # features = [ col for col in data.X_target_te.cpu().detach().numpy().columns]
+            features = [ col for col in data.knobs.columns]
+
+            # feat_importances = pd.Series(model.feature_importances_, index=features)    
+            # 원핫벡터가 포함된 importance라서 index랑 데이터의 길이가 다르다는 오류
+            # ValueError: Length of values (38) does not match length of index (22)
+            # model.feature_importances_ # list임
+            """ feature_importance값이 0인 index를 제외 --> 선별된 knob들로 ga """
+
+            #local
+            explain_matrix, masks = model.explain(data.X_target_te.cpu().detach().numpy())
+            masks[3] = masks[0] + masks[1] + masks[2]
+            # model.save_model('model_save')
+            
+            return model, preds           
+        
+        elif opt.mode == 'dnn':
+            """ make dataset ( train, valid, test) """
+
+            """ wmaml-step """
+
+            """ adaptation-step """
+
 
     elif opt.train_type == 'rsp':
         pass
@@ -74,21 +185,21 @@ def train_fitness_function(knobs, logger, opt):
         model = SingleNet(input_dim=knobs.norm_X_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
 
         # if opt.train:       
-        logger.info(f"[Train MODE] Training Model") 
+        logging.info(f"[Train MODE] Training Model") 
         best_loss = 100
         name = get_filename('model_save', 'model', '.pt')
         for epoch in range(opt.epochs):
             loss_tr = train(model, loader_tr, opt.lr)
             loss_te, outputs = valid(model, loader_te)
         
-            logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
+            logging.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
 
             if best_loss > loss_te and epoch>15:
                 best_loss = loss_te
                 best_model = model
                 best_outputs = outputs
                 torch.save(best_model, os.path.join('model_save', name))
-        logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
+        logging.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
         
         return best_model, best_outputs
         # elif opt.eval:
