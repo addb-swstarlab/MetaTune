@@ -59,7 +59,8 @@ def main():
     knobs.split_data()
     knobs.scale_data()
     
-    fitness_function, scores = train_fitness_function(knobs=knobs, opt=opt)    
+    fitness_function, scores = train_fitness_function(knobs=knobs, opt=opt) 
+    logger.info("## Train/Load Fitness Function DONE ##")
     
     res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
