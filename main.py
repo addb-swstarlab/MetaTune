@@ -69,13 +69,16 @@ def main():
     knobs.scale_data()
     
     # Model training
+    logger.info("## Train/Load Fitness Function start ##")
     fitness_function, scores = train_fitness_function(knobs=knobs, opt=opt) 
-    logger.info("## Train/Load Fitness Function DONE ##")
+    logger.info("## Train/Load Fitness Function finish ##")
     
     # Configuration recommendation    
+    logger.info("## configuration recommendation start ##")
     res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
     exec_benchmark(recommend_command, opt)
+    logger.info("## configuration recommendation finish ##")
 
 if __name__ == '__main__':
     try:
