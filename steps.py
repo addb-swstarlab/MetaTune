@@ -55,4 +55,29 @@ def train_fitness_function(knobs, opt):
             if patience >= opt.patience:
                 logging.info(f"Early stopping") 
                 break
-        logging.info(f"---------------maml train step finish---------------") 
+        logging.info(f"---------------MAML train step finish---------------") 
+        
+
+        best_loss = np.inf
+        adapt_model = torch.load(os.path.join('model_save/maml', name))
+        name = get_filename('model_save', 'model', '.pt')
+        for epoch in range(opt.epochs):
+            loss_tr = train(adapt_model, maml_data.adapt_dl_tr, opt.lr, loss_f=opt.loss)
+            loss_te, outputs = valid(adapt_model, maml_data.adapt_dl_te, loss_f=opt.loss)
+        
+            if best_loss > loss_te:
+                best_loss = loss_te
+                best_model = adapt_model
+                best_outputs = outputs
+                best_epoch = epoch + 1
+                patience = 0                
+                torch.save(best_model, os.path.join('model_save', name))
+            else:
+                patience += 1
+            
+            if patience >= opt.patience:
+                logging.info(f"Early stopping") 
+                break
+        
+        model_path = os.path.join('model_save', name)
+        logging.info(f"---------------Adaptation train step finish---------------") 
