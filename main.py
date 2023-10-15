@@ -13,6 +13,13 @@ import torch
 os.system('clear')
 parser = argparse.ArgumentParser()
 
+parser.add_argument('--dbms', type=str, default='rocksdb', help='select dbms')
+parser.add_argument('--target', type=str, help='Choose target workload')
+parser.add_argument('--lr', type=float, default=0.0001, help='Define learning rate')
+parser.add_argument('--epochs', type=int, default=200, help='Define train epochs')
+parser.add_argument('--batch_size', type=int, default=256, help='Define model batch size')
+parser.add_argument('--train_type', type=str, default='maml',choices=['replace','maml'])
+
 
 opt = parser.parse_args()
 
@@ -33,7 +40,22 @@ for i in vars(opt):
     logger.info(f'{i}: {vars(opt)[i]}')
     
 def main():
-    pass
+    
+    logger.info("## get raw datas ##")
+    
+    raw_knobs = {}
+    internal_dict = {}
+    external_dict = {}
+    
+    knobs = Knob(raw_knobs, internal_dict, external_dict, WK_NUM, opt)
+    knobs.split_data()
+    knobs.scale_data()
+    
+    fitness_function, scores = train_fitness_function(knobs=knobs, opt=opt)    
+    
+    res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+
+    exec_benchmark(recommend_command, opt)
 
 
 if __name__ == '__main__':
