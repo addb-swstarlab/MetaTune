@@ -31,7 +31,7 @@ class MAMLTrainer():
             self.meta_optimizer.zero_grad()
             meta_loss = 0.
             
-            # get batch datas
+            # get batch data
             tr_samples = tr_sampler.get_sample()
             val_samples = val_sampler.get_sample()
             
