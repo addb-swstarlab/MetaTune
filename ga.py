@@ -34,3 +34,8 @@ class RocksDBSingleProblem(Problem):
         df = np.repeat(np.array(df), pr.shape[0], axis=0)
         score = (df[:,0] - pr[:,0]) + (pr[:,1] - df[:,1]) + (df[:,2] - pr[:,2]) + (df[:,3] - pr[:,3])
         return np.round(-score, 6)
+    
+def genetic_algorithm(mode, problem, pop_size, eliminate_duplicates=True):
+    algorithm = GA(pop_size=pop_size, eliminate_duplicates=eliminate_duplicates)
+    res = minimize(problem, algorithm, verbose=False)
+    return res
