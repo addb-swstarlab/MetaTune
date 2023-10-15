@@ -246,3 +246,15 @@ class ConvNet(nn.Module):
             else:
                 decoder_input = torch.cat([decoder_input, decoder_output[:, -1:]], dim=1)
         return decoder_output
+
+    def parameterized(self, src, trg, enc_weights, dec_weights, train=True):
+        encoder_conved, encoder_combined = self.encoder._parameterized(src, enc_weights)
+        
+        decoder_input = torch.zeros((src.shape[0], 1, 1)).cuda()
+        for d_len in range(trg.shape[1]):
+            decoder_output, self.attention = self.decoder._parameterized(decoder_input, encoder_conved, encoder_combined, dec_weights)
+            if train:
+                decoder_input = torch.cat([decoder_input, trg[:,d_len].unsqueeze(-1)], dim=1)
+            else:
+                decoder_input = torch.cat([decoder_input, decoder_output[:, -1:]], dim=1)
+        return decoder_output
