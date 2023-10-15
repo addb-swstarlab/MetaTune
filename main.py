@@ -38,7 +38,10 @@ opt.log_dir = log_dir
 logger.info("## model hyperparameter information ##")
 for i in vars(opt):
     logger.info(f'{i}: {vars(opt)[i]}')
-    
+
+if opt.dbms == 'rocksdb':
+    WK_NUM = 16    
+
 def main():
     
     logger.info("## get raw datas ##")
