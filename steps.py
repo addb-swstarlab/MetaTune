@@ -106,3 +106,21 @@ def train_fitness_function(knobs, opt):
     os.system(f'echo PCC={PCC(true, pred):.4f} MSE={MSE(true, pred):.4f} RMSE={RMSE(true, pred):.4f} >> wk_{opt.target}_scores.txt')
     
     return best_model, pd.DataFrame(data=[[pcc, mse, rmse, model_path]], columns=['PCC', 'MSE', 'RMSE', 'model_path'])
+
+
+def GA_optimization(knobs, fitness_function, logger, opt):
+
+    problem = RocksDBSingleProblem(knobs=knobs, model=fitness_function)
+
+    res = genetic_algorithm(mode=opt.ga, problem=problem, pop_size=opt.population)
+    results = res.X
+    
+    if opt.dbms == 'rocksdb':
+        recommend_command = ''
+        
+        for idx, col in enumerate(knobs.columns):                 
+            recommend_command = convert_int_to_category(col, recommend_command, results[idx])
+
+        recommend_command = make_dbbench_command(opt.target, recommend_command)
+        logger.info(f"db_bench command is  {recommend_command}")
+        return res, recommend_command
