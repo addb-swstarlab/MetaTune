@@ -62,7 +62,6 @@ def main():
 
     exec_benchmark(recommend_command, opt)
 
-
 if __name__ == '__main__':
     try:
         main()
