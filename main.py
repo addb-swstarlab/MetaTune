@@ -17,6 +17,7 @@ parser.add_argument('--dbms', type=str, default='rocksdb', help='select dbms')
 parser.add_argument('--target', type=str, help='Choose target workload')
 parser.add_argument('--lr', type=float, default=0.0001, help='Define learning rate')
 parser.add_argument('--epochs', type=int, default=200, help='Define train epochs')
+parser.add_argument('--patience', type=int, default=15, help='Define earlystop count')
 parser.add_argument('--hidden_size', type=int, default=128, help='Define model hidden size')
 parser.add_argument('--n_layers', type=int, default=8, help='Define # of conv layer')
 parser.add_argument('--kernel_size', type=int, default=3, help='Define # of kernel on conv')
@@ -26,6 +27,10 @@ parser.add_argument('--d_threshold', type=float, default=1.5, help='select value
 parser.add_argument('--maml_in_lr', type=float, default=0.01, help='Define inner_learning rate for inner loop of maml train')
 parser.add_argument('--maml_lr', type=float, default=0.001, help='Define maml learning rate')
 parser.add_argument('--maml_epochs', type=int, default=200, help='Define maml train epochs')
+parser.add_argument('--ad_batch_size', type=int, help='Define model batch size of adaptation step')
+parser.add_argument('--ad_sample_num', type=int, help='Define number of trianing sample for adaptation step')
+parser.add_argument('--population', type=int, default=100, help='Define the number of generation to GA algorithm')
+parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
 
 opt = parser.parse_args()
 
