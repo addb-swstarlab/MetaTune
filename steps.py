@@ -24,3 +24,7 @@ def train_fitness_function(knobs, opt):
                             dropout_p=0.25, max_length=knobs.external_metrics[0].shape[-1])
     model = ConvNet(encoder=encoder, decoder=decoder).cuda()
     
+    if opt.train_type == 'maml':
+        maml_data = MAMLdata(knobs, opt)
+        
+        trainer = MAMLTrainer(model, opt)

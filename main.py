@@ -20,7 +20,9 @@ parser.add_argument('--epochs', type=int, default=200, help='Define train epochs
 parser.add_argument('--batch_size', type=int, default=256, help='Define model batch size')
 parser.add_argument('--train_type', type=str, default='maml',choices=['replace','maml'])
 parser.add_argument('--d_threshold', type=float, default=2, help='select value of threshold')
-
+parser.add_argument('--maml_in_lr', type=float, default=0.01, help='Define inner_learning rate for inner loop of maml train')
+parser.add_argument('--maml_lr', type=float, default=0.001, help='Define maml learning rate')
+parser.add_argument('--maml_epochs', type=int, default=200, help='Define maml train epochs')
 
 opt = parser.parse_args()
 
