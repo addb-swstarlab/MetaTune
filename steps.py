@@ -81,3 +81,28 @@ def train_fitness_function(knobs, opt):
         
         model_path = os.path.join('model_save', name)
         logging.info(f"---------------Adaptation train step finish---------------") 
+
+
+
+    ## Evaluate model
+    pred = np.round(knobs.scaler_y.inverse_transform(best_outputs.cpu().detach().numpy().squeeze()), 2)
+        
+    if opt.train_type == 'maml' :
+        true = np.round(knobs.scaler_y.inverse_transform(maml_data.knobs.norm_target_y_te.cpu().detach().numpy()), 2)
+
+    logging.info('[PCC SCORE]')
+    pcc = PCC(true, pred)
+    logging.info(f'average PCC score = {pcc:.4f}')
+    
+    logging.info('[MSE SCORE]')
+    mse = MSE(true, pred)
+    logging.info(f'average MSE score = {mse:.4f}')
+    
+    logging.info('[RMSE SCORE]')
+    rmse = RMSE(true, pred)
+    logging.info(f'average RMSE score = {rmse:.4f}')
+      
+    os.system(f'echo {opt.log_dir} >> wk_{opt.target}_scores.txt')
+    os.system(f'echo PCC={PCC(true, pred):.4f} MSE={MSE(true, pred):.4f} RMSE={RMSE(true, pred):.4f} >> wk_{opt.target}_scores.txt')
+    
+    return best_model, pd.DataFrame(data=[[pcc, mse, rmse, model_path]], columns=['PCC', 'MSE', 'RMSE', 'model_path'])
