@@ -41,7 +41,9 @@ for i in vars(opt):
 
 if opt.dbms == 'rocksdb':
     WK_NUM = 16    
-
+else : 
+    assert False, "Not support the dbms"
+    
 def main():
     
     logger.info("## get raw datas ##")
