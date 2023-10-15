@@ -223,5 +223,26 @@ class DecoderConv(nn.Module):
         
         return output, attention
 
-def ConvNet():
-    pass
+class ConvNet(nn.Module):
+    def __init__(self, encoder, decoder):
+        super(ConvNet, self).__init__()
+        
+        self.encoder = encoder
+        self.decoder = decoder
+        
+    def forward(self, src, trg=None, trg_len=None, train=True):
+        if trg_len is None:
+            trg_len = trg.shape[1]
+        else:
+            assert trg is None, "Input the target data"
+            
+        encoder_conved, encoder_combined = self.encoder(src)
+        
+        decoder_input = torch.zeros((src.shape[0], 1, 1)).cuda()
+        for d_len in range(trg_len):
+            decoder_output, self.attention = self.decoder(decoder_input, encoder_conved, encoder_combined)
+            if train:
+                decoder_input = torch.cat([decoder_input, trg[:,d_len].unsqueeze(-1)], dim=1)
+            else:
+                decoder_input = torch.cat([decoder_input, decoder_output[:, -1:]], dim=1)
+        return decoder_output
