@@ -51,6 +51,7 @@ def main():
     
     logger.info("## get raw datas ##")
     
+    # Prepare the data
     raw_knobs = {}
     internal_dict = {}
     external_dict = {}
@@ -59,9 +60,11 @@ def main():
     knobs.split_data()
     knobs.scale_data()
     
+    # Model training
     fitness_function, scores = train_fitness_function(knobs=knobs, opt=opt) 
     logger.info("## Train/Load Fitness Function DONE ##")
     
+    # Configuration recommendation    
     res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
     exec_benchmark(recommend_command, opt)
