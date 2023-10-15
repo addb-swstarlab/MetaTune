@@ -19,6 +19,7 @@ parser.add_argument('--lr', type=float, default=0.0001, help='Define learning ra
 parser.add_argument('--epochs', type=int, default=200, help='Define train epochs')
 parser.add_argument('--batch_size', type=int, default=256, help='Define model batch size')
 parser.add_argument('--train_type', type=str, default='maml',choices=['replace','maml'])
+parser.add_argument('--d_threshold', type=float, default=2, help='select value of threshold')
 
 
 opt = parser.parse_args()

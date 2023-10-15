@@ -23,3 +23,4 @@ def train_fitness_function(knobs, opt):
                             n_layers=opt.n_layers, kernel_size=opt.kernel_size,
                             dropout_p=0.25, max_length=knobs.external_metrics[0].shape[-1])
     model = ConvNet(encoder=encoder, decoder=decoder).cuda()
+    

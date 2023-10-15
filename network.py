@@ -11,6 +11,18 @@ import numpy as np
 from scipy.spatial import distance
 import logging
 
+class MAMLdata:
+    def __init__(self, knobs, opt):
+        self.knobs = knobs
+        self.opt = opt
+        self.d_threshold = opt.d_threshold
+        self.set_dataset()
+        self.make_dataloader()
+
+    def set_dataset(self):
+        self.dataset_name = 'AttnDataset'    
+
+
 class EncoderConv(nn.Module):
     def __init__(self, embed_dim, hidden_dim, n_layers, kernel_size, dropout_p, input_dim=1, max_length=22):
         super(EncoderConv, self).__init__()
