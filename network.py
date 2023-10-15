@@ -185,7 +185,43 @@ class DecoderConv(nn.Module):
         
         return output, attention
     
-
+    def _parameterized(self, trg, encoder_conved, encoder_combined, weights):
+        batch_size = trg.shape[0]
+        trg_len = trg.shape[1]
+        
+        pos = torch.arange(0, trg_len).unsqueeze(0).repeat(batch_size, 1).cuda()
+        
+        trg_embedded = F.linear(trg, weights[0], weights[1])
+        pos_embedded = F.embedding(pos, weights[2])
+        
+        embedded = self.dropout(trg_embedded + pos_embedded)
+    
+        conv_input = F.linear(embedded, weights[3], weights[4])
+        conv_input = conv_input.permute(0, 2, 1)
+        
+        conv_idx = 9
+        for _ in range(self.n_layers):
+            conv_input = self.dropout(conv_input)
+            
+            padding = torch.zeros(batch_size, self.hidden_dim, self.kernel_size-1).fill_(self.trg_pad_idx).cuda()
+            padded_conv_input = torch.cat((padding, conv_input), dim = 2)
+            
+            conved = F.conv1d(padded_conv_input, weights[conv_idx], weights[conv_idx+1])
+            conved = F.glu(conved, dim = 1)
+            
+            attention, conved = self._functional_calculate_attention(embedded, conved, encoder_conved, encoder_combined,
+                                                                      weights[5], weights[6], weights[7], weights[8])
+            
+            conved = (conved + conv_input) * self.scale
+            conv_input = conved
+            
+            conv_idx += 2
+            
+        conved = F.linear(conved.permute(0, 2, 1), weights[-4], weights[-3])
+        conved = self.dropout(conved)
+        output = F.linear(conved, weights[-2], weights[-1])
+        
+        return output, attention
 
 def ConvNet():
     pass
