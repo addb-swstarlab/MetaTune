@@ -102,3 +102,6 @@ def PCC(true, pred):
 
 def RMSE(true, pred):
     return mean_squared_error(true, pred)**0.5
+
+def MSE(true, pred):
+    return mean_squared_error(true, pred)
