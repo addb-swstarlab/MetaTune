@@ -113,7 +113,14 @@ class Sampler():
         self.iterators = self.get_iterators()
 
     def get_iterators(self):
-        return
+        iterators = []
+        for i in range(self.wk_num):
+            d_iter = self.dataloaders[i].__iter__()
+            iterators.append(d_iter)
+        return iterators
 
     def get_sample(self):
-        return
+        samples = {}
+        for i in range(self.wk_num):
+            samples[i] = next(self.iterators[i])
+        return samples
