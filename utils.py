@@ -99,3 +99,6 @@ def PCC(true, pred):
         res, _ = pearsonr(true[:,idx], pred[:,idx])  
         pcc_res[idx] = res
     return np.average(pcc_res)
+
+def RMSE(true, pred):
+    return mean_squared_error(true, pred)**0.5
