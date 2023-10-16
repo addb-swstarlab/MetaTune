@@ -92,3 +92,10 @@ def rocksdb_metrics_dataframe(wk, pruned_im, internal_path, external_path):
     internal = internal[pruned_im.columns]
     external = pd.read_csv(os.path.join(external_path, f'external_results_{wk}.csv'), index_col=0)
     return internal, external
+
+def PCC(true, pred):
+    pcc_res = np.zeros(4)
+    for idx in range(true.shape[-1]):
+        res, _ = pearsonr(true[:,idx], pred[:,idx])  
+        pcc_res[idx] = res
+    return np.average(pcc_res)
