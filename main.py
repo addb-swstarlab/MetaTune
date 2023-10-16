@@ -76,8 +76,7 @@ def main():
     
     
     raw_knobs[wk+1] = getattr(utils, f'{opt.dbms}_knob_dataframe')(opt.target, os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'configs'), target=True)
-    internal_dict[wk+1], external_dict[wk+1] = getattr(utils, f'{opt.dbms}_metrics_dataframe')(opt.target,
-                                                                                               pruned_im, 
+    internal_dict[wk+1], external_dict[wk+1] = getattr(utils, f'{opt.dbms}_metrics_dataframe')(opt.target, pruned_im, 
                                                                                                os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'results'), 
                                                                                                os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'results')) 
     raw_knobs[wk].reset_index(drop=True)
@@ -86,8 +85,7 @@ def main():
 
     
     raw_knobs[wk+2] = getattr(utils, f'{opt.dbms}_knob_dataframe')(opt.target, os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'configs'), target=True)
-    internal_dict[wk+2], external_dict[wk+2] = getattr(utils, f'{opt.dbms}_metrics_dataframe')(opt.target,
-                                                                                            pruned_im, 
+    internal_dict[wk+2], external_dict[wk+2] = getattr(utils, f'{opt.dbms}_metrics_dataframe')(opt.target, pruned_im,
                                                                                             os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'results'), 
                                                                                             os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'results'))
     raw_knobs[wk+2].reset_index(drop=True)
