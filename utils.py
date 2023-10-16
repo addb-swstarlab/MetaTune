@@ -5,6 +5,7 @@ import pandas as pd
 import configparser
 from sklearn.metrics import mean_squared_error
 from scipy.stats import pearsonr
+from configs import *
 
 def get_filename(PATH, head, tail):
     i = 0
@@ -136,4 +137,19 @@ def convert_int_to_category(col, cmd, s):
         cmd += f'-{col}={round(s, 2)} '
     else:
         cmd += f'-{col}={round(s)} '
+    return cmd
+
+def make_dbbench_command(trg_wk, rc_cmd):
+    wk_info = pd.read_csv(ROCKSDB_WORKLOAD_INFO, index_col=0)
+    f_wk_info = wk_info.loc[:,:'num']
+    b_wk_info = wk_info.loc[:, 'benchmarks':]
+    cmd = 'rocksdb/db_bench '   
+    f_cmd = " ".join([f'-{_}={int(f_wk_info.loc[trg_wk][_])}' for _ in f_wk_info.columns])
+    b_cmd = f"--{b_wk_info.columns[0]}={b_wk_info.loc[trg_wk][0]} "
+    b_cmd += f"--statistics "
+    if not np.isnan(b_wk_info.loc[trg_wk][1]):
+        b_cmd += f"--{b_wk_info.columns[1]}={int(b_wk_info.loc[trg_wk][1])}"
+
+    cmd += f_cmd + " " + rc_cmd + b_cmd + ' > ' + BENCHMARK_TEXT_PATH
+
     return cmd
