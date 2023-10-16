@@ -124,3 +124,16 @@ class Sampler():
         for i in range(self.wk_num):
             samples[i] = next(self.iterators[i])
         return samples
+    
+def convert_int_to_category(col, cmd, s):
+    ct_data = {'compression_type':["snappy", "none", "lz4", "zlib"],
+               'cache_index_and_filter_blocks': ["false", "true"],
+               'open_files':['-1', '10000', '100000', '1000000']}
+    
+    if col in ct_data.keys():
+        cmd += f'-{col}={ct_data[col][round(s)]} '
+    elif col=='memtable_bloom_size_ratio' or col=='compression_ratio':
+        cmd += f'-{col}={round(s, 2)} '
+    else:
+        cmd += f'-{col}={round(s)} '
+    return cmd
