@@ -28,7 +28,6 @@ parser.add_argument('--maml_in_lr', type=float, default=0.01, help='Define inner
 parser.add_argument('--maml_lr', type=float, default=0.001, help='Define maml learning rate')
 parser.add_argument('--maml_epochs', type=int, default=50, help='Define maml train epochs')
 parser.add_argument('--ad_batch_size', type=int, help='Define model batch size of adaptation step')
-parser.add_argument('--ad_sample_num', type=int, help='Define number of trianing sample for adaptation step')
 parser.add_argument('--population', type=int, default=100, help='Define the number of generation to GA algorithm')
 parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
 
@@ -50,6 +49,11 @@ logger.info("## model hyperparameter information ##")
 for i in vars(opt):
     logger.info(f'{i}: {vars(opt)[i]}')
 
+DBMS_PATH = f'{opt.dbms}'
+KNOB_PATH = os.path.join('data', DBMS_PATH, 'configs')
+EXTERNAL_PATH = os.path.join('data', DBMS_PATH, 'external')
+INTERNAL_PATH = os.path.join('data', DBMS_PATH, 'internal')
+
 if opt.dbms == 'rocksdb':
     WK_NUM = 16    
 else : 
@@ -63,6 +67,27 @@ def main():
     raw_knobs = {}
     internal_dict = {}
     external_dict = {}
+    
+    pruned_im = pd.read_csv(os.path.join(INTERNAL_PATH, 'internal_ensemble_pruned_tmp.csv'), index_col=0)
+    
+    for wk in range(WK_NUM):
+        raw_knobs[wk] = getattr(utils, f'{opt.dbms}_knob_dataframe')(wk, KNOB_PATH)
+        internal_dict[wk], external_dict[wk] = getattr(utils, f'{opt.dbms}_metrics_dataframe')(wk, pruned_im, INTERNAL_PATH, EXTERNAL_PATH)
+    
+    
+    raw_knobs[wk+1] = getattr(utils, f'{opt.dbms}_knob_dataframe')(opt.target, os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'configs'), target=True)
+    internal_dict[wk+1], external_dict[wk+1] = getattr(utils, f'{opt.dbms}_metrics_dataframe')(opt.target,
+                                                                                               pruned_im, 
+                                                                                               os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'results'), 
+                                                                                               os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'results')) 
+
+    
+    raw_knobs[wk+2] = getattr(utils, f'{opt.dbms}_knob_dataframe')(opt.target, os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'configs'), target=True)
+    internal_dict[wk+2], external_dict[wk+2] = getattr(utils, f'{opt.dbms}_metrics_dataframe')(opt.target,
+                                                                                            pruned_im, 
+                                                                                            os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'results'), 
+                                                                                            os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'results'))
+
     
     knobs = Knob(raw_knobs, internal_dict, external_dict, WK_NUM, opt)
     knobs.split_data()
