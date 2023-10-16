@@ -105,3 +105,15 @@ def RMSE(true, pred):
 
 def MSE(true, pred):
     return mean_squared_error(true, pred)
+
+class Sampler():  
+    def __init__(self, dataloaders):
+        self.wk_num = len(dataloaders)
+        self.dataloaders = dataloaders
+        self.iterators = self.get_iterators()
+
+    def get_iterators(self):
+        return
+
+    def get_sample(self):
+        return
