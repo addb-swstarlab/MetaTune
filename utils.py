@@ -40,3 +40,49 @@ def get_logger(log_path='./logs'):
     logger.setLevel(logging.INFO)
     logger.info('Writing logs at {}'.format(os.path.join(log_path, name)))
     return logger, os.path.join(log_path, name)
+
+def rocksdb_knob_dataframe(_, knobs_path, target=False):
+    if target:
+        return pd.read_csv(f'{knobs_path}/configs_{_}.csv', index_col=0)
+    
+    config_files = os.listdir(knobs_path)
+
+    datas = []
+    columns = []
+    rowlabels = []
+
+    compression_type = ["snappy", "none", "lz4", "zlib"]
+    cache_index_and_filter_blocks = ["false", "true"]
+    open_files = ['-1', '10000', '100000', '1000000']
+    
+    for m in range(len(config_files)):
+        flag = 0
+        config_datas = []
+        config_columns = []
+        knob_path = os.path.join(knobs_path, 'config'+str(m+1)+'.cnf')
+        f = open(knob_path, 'r')
+        config_file = f.readlines()
+        knobs_list = config_file[1:-1]
+        cmp_type = 0
+        
+        for l in knobs_list:
+            col, _, d = l.split()
+            if d in compression_type:
+                if d == "none":
+                    cmp_type = 1
+                d = compression_type.index(d)
+            elif d in cache_index_and_filter_blocks:
+                d = cache_index_and_filter_blocks.index(d)
+            if col == "compression_ratio" and cmp_type:
+                d = 1
+            if col == 'open_files':
+                d = open_files.index(d)
+            config_datas.append(d)
+            config_columns.append(col)
+
+        datas.append(config_datas)
+        columns.append(config_columns)
+        rowlabels.append(m+1)
+
+    pd_knobs = pd.DataFrame(data=np.array(datas).astype(np.float32), columns=np.array(columns[0]))
+    return pd_knobs
