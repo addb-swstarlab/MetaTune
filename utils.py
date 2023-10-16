@@ -86,3 +86,9 @@ def rocksdb_knob_dataframe(_, knobs_path, target=False):
 
     pd_knobs = pd.DataFrame(data=np.array(datas).astype(np.float32), columns=np.array(columns[0]))
     return pd_knobs
+
+def rocksdb_metrics_dataframe(wk, pruned_im, internal_path, external_path):
+    internal = pd.read_csv(os.path.join(internal_path, f'internal_results_{wk}.csv'), index_col=0)
+    internal = internal[pruned_im.columns]
+    external = pd.read_csv(os.path.join(external_path, f'external_results_{wk}.csv'), index_col=0)
+    return internal, external
