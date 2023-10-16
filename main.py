@@ -80,6 +80,9 @@ def main():
                                                                                                pruned_im, 
                                                                                                os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'results'), 
                                                                                                os.path.join('data', DBMS_PATH, 'target_workload', 'adaptation', 'results')) 
+    raw_knobs[wk].reset_index(drop=True)
+    internal_dict[wk+1].reset_index(drop=True)
+    external_dict[wk+1].reset_index(drop=True)
 
     
     raw_knobs[wk+2] = getattr(utils, f'{opt.dbms}_knob_dataframe')(opt.target, os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'configs'), target=True)
@@ -87,7 +90,9 @@ def main():
                                                                                             pruned_im, 
                                                                                             os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'results'), 
                                                                                             os.path.join('data', DBMS_PATH, 'target_workload', 'test', 'results'))
-
+    raw_knobs[wk+2].reset_index(drop=True)
+    internal_dict[wk+2].reset_index(drop=True)
+    external_dict[wk+2].reset_index(drop=True)
     
     knobs = Knob(raw_knobs, internal_dict, external_dict, WK_NUM, opt)
     knobs.split_data()
