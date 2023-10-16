@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 from network import * 
 from train import *
-from utils import get_filename, convert_int_to_category, PCC, MSE, RMSE
+from utils import get_filename, convert_int_to_category, make_dbbench_command, PCC, MSE, RMSE
 from scipy.stats import gmean
 from ga import RocksDBSingleProblem, RocksDBMultiProblem, genetic_algorithm
 import logging

@@ -75,9 +75,8 @@ def main():
     
     # Configuration recommendation    
     logger.info("## configuration recommendation start ##")
-    res, recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
-
-    exec_benchmark(recommend_command, opt)
+    res, recommendation_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    exec_benchmark(recommendation_command, opt)
     logger.info("## configuration recommendation finish ##")
 
 if __name__ == '__main__':
