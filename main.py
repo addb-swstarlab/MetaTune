@@ -7,12 +7,14 @@ import utils
 from knobs import Knob
 from steps import train_fitness_function, GA_optimization
 from configs import *
+import random
+import numpy as np
 import torch
 
 
 os.system('clear')
 parser = argparse.ArgumentParser()
-
+parser.add_argument('--seed', type=str, default='fix', choices=['fix', 'random'], help='random seed')
 parser.add_argument('--dbms', type=str, default='rocksdb', help='select dbms')
 parser.add_argument('--target', type=str, help='Choose target workload')
 parser.add_argument('--lr', type=float, default=0.0001, help='Define learning rate')
@@ -32,6 +34,41 @@ parser.add_argument('--population', type=int, default=100, help='Define the numb
 parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
 
 opt = parser.parse_args()
+
+### set random seed
+
+if opt.seed == 'fix':
+    logger.info(f"## Random seed [fix] ##")    # fix
+    if opt.dbms == 'rocksdb':
+        # seeds = {16: 314, 17: 259, 18: 880, 19: 37, 20: 137, 21: 811 }
+        seeds = {16: 315, 17: 259, 18: 880, 19: 37, 20: 137, 21: 811 }
+        
+        num = seeds[int(opt.target)]
+    else:
+        num = random.randrange(1, 1004) # 1부터 1004 사이의 난수 생성
+elif opt.seed == 'random':
+    logger.info(f"## Random seed [random] ##")    # random
+    num = random.randrange(1, 1004) # 1부터 1004 사이의 난수 생성
+
+seed = num
+opt.seed = seed
+print(opt.seed)
+deterministic = True
+
+random.seed(seed)       # fix random seed of python
+np.random.seed(seed)    # fix random seed of numpy
+
+# fix random seed of pytorch
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+logger.info(f"## Random seed={seed} ##")
+
+# fix random seed of CuDNN
+if deterministic:
+    torch.backends.cudnn.deterministic = True    # If set True, slow down computational speed. Set True when reproductable experiment model is required
+    torch.backends.cudnn.benchmark = False
+
+
 
 if not os.path.exists('logs'):
     os.mkdir('logs')
