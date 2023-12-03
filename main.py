@@ -14,7 +14,7 @@ import torch
 
 os.system('clear')
 parser = argparse.ArgumentParser()
-parser.add_argument('--seed', type=str, default='fix', choices=['fix', 'random'], help='random seed')
+parser.add_argument('--seed', type=str, default='random', help='random seed')
 parser.add_argument('--dbms', type=str, default='rocksdb', help='select dbms')
 parser.add_argument('--target', type=str, help='Choose target workload')
 parser.add_argument('--lr', type=float, default=0.0001, help='Define learning rate')
@@ -36,23 +36,14 @@ parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA bat
 opt = parser.parse_args()
 
 ### set random seed
-
-if opt.seed == 'fix':
-    logger.info(f"## Random seed [fix] ##")    # fix
-    if opt.dbms == 'rocksdb':
-        # seeds = {16: 314, 17: 259, 18: 880, 19: 37, 20: 137, 21: 811 }
-        seeds = {16: 315, 17: 259, 18: 880, 19: 37, 20: 137, 21: 811 }
-        
-        num = seeds[int(opt.target)]
-    else:
-        num = random.randrange(1, 1004) # 1부터 1004 사이의 난수 생성
-elif opt.seed == 'random':
+if opt.seed == 'random':
     logger.info(f"## Random seed [random] ##")    # random
-    num = random.randrange(1, 1004) # 1부터 1004 사이의 난수 생성
+    num = random.randrange(1, 1004)
+else:
+    num = int(opt.seed)
 
 seed = num
 opt.seed = seed
-print(opt.seed)
 deterministic = True
 
 random.seed(seed)       # fix random seed of python
