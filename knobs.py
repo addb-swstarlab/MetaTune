@@ -54,7 +54,30 @@ class Knob:
 
 
     def _select_training_workload(self):
-        pass
+        logging.info("====select workloads to replace target samples===")
+        trg_except_div_ds = self.div_ds[:-1]
+        self.avail_wk_idx = np.where(trg_except_div_ds<=self.d_threshold)[0] # except target workload data
+        
+        if self.avail_wk_idx.size == 0:
+            self.avail_wk_idx = [np.argmin(trg_except_div_ds)]
+            logging.info(f"there is no similar workloads whose distance are lower than {self.d_threshold}")
+        logging.info(f"use {self.avail_wk_idx} workloads")
+        print(f"use {self.avail_wk_idx} workloads")
+        
+        if self.opt.train_type == 'general':    # concat available workload data
+            knob_data = []
+            ex_data = []
+            for i in range(len(self.avail_wk_idx)):
+                knob_data.append(self.knobs[self.avail_wk_idx[i]])
+                ex_data.append(self.external_metrics[self.avail_wk_idx[i]])
+                
+            self.concated_X = pd.concat(knob_data)
+            self.concated_y = pd.concat(ex_data)
+            self.concated_X = self.concated_X.reset_index(drop=True)  
+            self.concated_y = self.concated_y.reset_index(drop=True)  
+            
+        self.selected_X = dict((_, self.knobs[_]) for _ in self.avail_wk_idx)
+        self.selected_y = dict((_, self.external_metrics[_]) for _ in self.avail_wk_idx)
 
     def split_data(self):
         pass
