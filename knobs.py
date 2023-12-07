@@ -82,4 +82,6 @@ class Knob:
         return default_em.iloc[self.opt.target:self.opt.target+1, :] # [time, rate, waf, sa]
 
     def get_range(self):
-        pass
+        entire_knobs = pd.concat(self.knobs)
+        self.lower_boundary = np.array(entire_knobs.astype(float).min())
+        self.upper_boundary = np.array(entire_knobs.astype(float).max())
