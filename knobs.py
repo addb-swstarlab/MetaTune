@@ -75,7 +75,11 @@ class Knob:
         pass
 
     def get_trg_default(self):
-        pass
+        '''
+            To get default results on target workload, self.target
+        '''
+        default_em = pd.read_csv(self.DEFAULT_EM_PATH,index_col=0)
+        return default_em.iloc[self.opt.target:self.opt.target+1, :] # [time, rate, waf, sa]
 
     def get_range(self):
         pass
