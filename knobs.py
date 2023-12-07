@@ -62,7 +62,6 @@ class Knob:
             self.avail_wk_idx = [np.argmin(trg_except_div_ds)]
             logging.info(f"there is no similar workloads whose distance are lower than {self.d_threshold}")
         logging.info(f"use {self.avail_wk_idx} workloads")
-        print(f"use {self.avail_wk_idx} workloads")
         
         if self.opt.train_type == 'general':    # concat available workload data
             knob_data = []
