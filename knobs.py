@@ -27,7 +27,31 @@ class Knob:
         
             
     def _calculate_mahalanobis_distance(self):
-        pass
+        external_metrics_ = self.external_metrics.copy()
+        if self.target+1 in self.external_metrics.keys():
+            del external_metrics_[self.target+1]    # delete test dataset of adaptation step
+            
+        data_u = external_metrics_[self.target]
+        self.ds = []
+        for wk in external_metrics_.keys():
+            data_v = external_metrics_[wk]
+            sum_d = 0
+            for conf_idx in range(len(data_u)):
+                d = distance.mahalanobis(u=data_u.iloc[conf_idx],
+                                        v=data_v.mean(),
+                                        VI=np.linalg.pinv(data_v.cov()))
+                sum_d += d
+            self.ds.append(sum_d)
+        self.div_ds = self.ds / np.min(self.ds) # divide distances by a distance of target workload
+        
+        logging.info("====calculate mahalanobis distance====")
+        for i, wk in enumerate(external_metrics_.keys()):
+            logging.info(f'{wk:2}th divided distance : {self.ds[i]}')
+        
+        logging.info("====calculate div-mahalanobis distance====")
+        for i, wk in enumerate(external_metrics_.keys()):
+            logging.info(f'{wk:2}th divided distance : {self.div_ds[i]}')
+
 
     def _select_training_workload(self):
         pass
