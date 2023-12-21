@@ -122,7 +122,16 @@ class Knob:
         self.target_norm_y_te = torch.Tensor(self.scaler_y.transform(self.groud_truth)).cuda()
 
     def _maml_scale_data(self):
-        pass
+        self.scaler_X = MinMaxScaler().fit(self.X_tr)
+        self.scaler_y = MinMaxScaler().fit(self.y_tr)
+        
+        self.norm_X_tr = torch.Tensor(self.scaler_X.transform(self.X_tr)).cuda()
+        self.norm_X_te = torch.Tensor(self.scaler_X.transform(self.X_te)).cuda()
+        self.norm_y_tr = torch.Tensor(self.scaler_y.transform(self.y_tr)).cuda()
+        self.norm_y_te = torch.Tensor(self.scaler_y.transform(self.y_te)).cuda()
+        
+        self.target_norm_X_te = torch.Tensor(self.scaler_X.transform(self.knobs[self.target+1])).cuda()
+        self.target_norm_y_te = torch.Tensor(self.scaler_y.transform(self.groud_truth)).cuda()  
 
     def get_trg_default(self):
         '''
