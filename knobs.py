@@ -51,6 +51,10 @@ class Knob:
         logging.info("====calculate div-mahalanobis distance====")
         for i, wk in enumerate(external_metrics_.keys()):
             logging.info(f'{wk:2}th divided distance : {self.div_ds[i]}')
+<<<<<<< HEAD
+=======
+
+>>>>>>> 82f5541ffff3b9f7c496150fe9fcfaf43b08bf30
 
     def _select_training_workload(self):
         logging.info("====select workloads to replace target samples===")
@@ -61,7 +65,10 @@ class Knob:
             self.avail_wk_idx = [np.argmin(trg_except_div_ds)]
             logging.info(f"there is no similar workloads whose distance are lower than {self.d_threshold}")
         logging.info(f"use {self.avail_wk_idx} workloads")
+<<<<<<< HEAD
         print(f"use {self.avail_wk_idx} workloads")
+=======
+>>>>>>> 82f5541ffff3b9f7c496150fe9fcfaf43b08bf30
         
         if self.opt.train_type == 'general':    # concat available workload data
             knob_data = []
