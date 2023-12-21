@@ -90,7 +90,10 @@ class Knob:
             self._maml_split_data()
     
     def scale_data(self):
-        pass
+        if self.train_type == 'general' or self.train_type == 'replace':
+            self._normal_scale_data()
+        else:
+            self._maml_scale_data()
     
     def _normal_split_data(self):
         pass
